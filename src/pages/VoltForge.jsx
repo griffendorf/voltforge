@@ -316,64 +316,31 @@ export default function VoltForge() {
     };
   }, []);
 
-  // ── Terminal press — AutoSnap tap-to-tap OR drag-to-wire ──
+  // ── Terminal press — tap start → tap end → wire created ──
   const onTermPress = useCallback((termId, compId, e) => {
     if (placing) return;
     e.stopPropagation(); e.preventDefault();
     const { x, y } = eXY(e);
-    const term = G.terminals.get(termId);
-    const isTouch = !!e.touches;
 
-    // — AutoSnap tap-to-tap mode —
-    if (autoSnapRef.current) {
-      // Second tap: complete the wire
-      if (drawing.current && !drawing.current.rewireId && termId !== drawing.current.termId) {
-        G.addWire(drawing.current.termId, termId, wColor);
-        bump();
-        // Stay in drawing mode from this terminal for chaining
+    // Second tap: complete the wire to this terminal
+    if (drawing.current && !drawing.current.rewireId && termId !== drawing.current.termId) {
+      G.addWire(drawing.current.termId, termId, wColor);
+      bump();
+      // If AutoSnap is on, chain from this terminal; otherwise clear
+      if (autoSnapRef.current) {
         drawing.current = { termId, compId };
         mouse.current = { x, y };
         snapRef.current = null;
-        clearRubberBand();
-        setSelected(null);
-        return;
-      }
-      // First tap: set origin
-      drawing.current = { termId, compId };
-      mouse.current = { x, y };
-      snapRef.current = null;
-      setSelected(null);
-      return;
-    }
-
-    // — Normal drag-to-wire mode —
-    const hasWires = term && term.wireIds.size > 0;
-    lpActive.current = false;
-    clearTimeout(lpTimer.current);
-
-    if (hasWires) {
-      lpTimer.current = setTimeout(() => {
-        lpActive.current = true;
-        const wid = [...term.wireIds][0];
-        const wire = G.wires.get(wid);
-        if (!wire) return;
-        const fixedTermId = wire.from === termId ? wire.to : wire.from;
-        drawing.current = { rewireId: wid, fixedTermId, termId, compId, color: wire.color };
-        mouse.current = { x, y };
+      } else {
+        drawing.current = null;
         snapRef.current = null;
-        setSelected(null);
-      }, 480);
-      drawing.current = { termId, compId };
-      mouse.current = { x, y };
-      snapRef.current = null;
-      setSelected(null);
-      if (!isTouch) {
-        const cancelRewire = () => { clearTimeout(lpTimer.current); window.removeEventListener('mouseup', cancelRewire); };
-        window.addEventListener('mouseup', cancelRewire);
       }
+      clearRubberBand();
+      setSelected(null);
       return;
     }
 
+    // First tap: set origin terminal
     drawing.current = { termId, compId };
     mouse.current = { x, y };
     snapRef.current = null;
