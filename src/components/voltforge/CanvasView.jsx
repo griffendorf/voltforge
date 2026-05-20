@@ -2,6 +2,8 @@ import { T, CW, CH, STATE_COL } from '@/lib/voltforge/theme';
 import { DEFS } from '@/lib/voltforge/definitions';
 import { G } from '@/lib/voltforge/instances';
 import { bezier } from '@/lib/voltforge/routing';
+import { useState } from 'react';
+import WireColorPicker from '@/components/voltforge/WireColorPicker';
 
 export default function CanvasView({
   cvRef, rbSvgRef, comps, wires, placing, isDrawing, selected,
@@ -12,6 +14,7 @@ export default function CanvasView({
   onCompPress, onTermPress, setWColor, setSelected, bump,
   isRewire, onWireLongPress,
 }) {
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const simHasErrors = simOn && errors?.length > 0;
   const simRunning = simOn && !simHasErrors;
   const hint = isRewire ? 'Drag wire end to a new terminal'
@@ -359,41 +362,39 @@ export default function CanvasView({
         </div>
 
         {/* Wire line-type picker */}
-        {(() => {
-          const types = [
-            { label: 'Blue',    color: T.blue   },
-            { label: 'Cyan',    color: T.cyan   },
-            { label: 'Green',   color: T.green  },
-            { label: 'Amber',   color: T.amber  },
-            { label: 'Red',     color: T.red    },
-            { label: 'Purple',  color: T.purple },
-          ];
-          const cur = types.find(t => t.color === wColor) || types[0];
-          return (
-            <div style={{
-              position: 'absolute', bottom: 10, right: 10, zIndex: 20,
-            }}>
-              <select
-                value={cur.color}
-                onChange={e => setWColor(e.target.value)}
-                style={{
-                  height: 32, padding: '0 28px 0 10px', borderRadius: 10,
-                  background: 'rgba(7,16,28,.95)', border: `1.5px solid ${cur.color}66`,
-                  color: cur.color, fontSize: 9, fontFamily: "'JetBrains Mono',monospace",
-                  fontWeight: 700, cursor: 'pointer', outline: 'none',
-                  appearance: 'none', WebkitAppearance: 'none',
-                  boxShadow: `0 0 8px ${cur.color}33`,
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E")`,
-                  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
-                  minWidth: 90,
-                }}>
-                {types.map(t => (
-                  <option key={t.color} value={t.color}>{t.label}</option>
-                ))}
-              </select>
-            </div>
-          );
-        })()}
+        <div style={{
+          position: 'absolute', bottom: 10, right: 10, zIndex: 20,
+        }}>
+          <button
+            onClick={() => setShowColorPicker(true)}
+            style={{
+              height: 44, padding: '0 16px', borderRadius: 10,
+              background: 'rgba(7,16,28,.95)', border: `2px solid ${wColor}66`,
+              color: wColor, fontSize: 11, fontFamily: "'JetBrains Mono',monospace",
+              fontWeight: 700, cursor: 'pointer', outline: 'none',
+              boxShadow: `0 0 8px ${wColor}33`,
+              display: 'flex', alignItems: 'center', gap: 8,
+              minWidth: 100,
+            }}
+          >
+            <div
+              style={{
+                width: 16, height: 16, borderRadius: '50%',
+                background: wColor,
+                boxShadow: `0 0 6px ${wColor}66`,
+              }}
+            />
+            WIRE
+          </button>
+        </div>
+
+        {showColorPicker && (
+          <WireColorPicker
+            wColor={wColor}
+            setWColor={setWColor}
+            onClose={() => setShowColorPicker(false)}
+          />
+        )}
       </div>
     </div>
   );

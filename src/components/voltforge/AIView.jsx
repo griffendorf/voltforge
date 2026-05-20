@@ -3,6 +3,7 @@ import { T } from '@/lib/voltforge/theme';
 import { G } from '@/lib/voltforge/instances';
 import { buildAIContext } from '@/lib/voltforge/ai-context';
 import { base44 } from '@/api/base44Client';
+import PullToRefresh from '@/components/voltforge/PullToRefresh';
 
 const mdRender = text =>
   text.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
@@ -75,7 +76,12 @@ USER QUESTION: ${text}`;
   return (
     <div style={{ width:'100%', height:'100%', display:'flex',
                   flexDirection:'column', overflow:'hidden' }}>
-
+    <PullToRefresh
+      onRefresh={async () => {
+        // Refresh chat context
+      }}
+      refreshKey={msgs.length}
+    >
       <div style={{ flex:1, overflowY:'auto', padding:'12px 12px 8px',
                     display:'flex', flexDirection:'column', gap:10 }}>
         {msgs.map((msg, i) => (
@@ -157,6 +163,7 @@ USER QUESTION: ${text}`;
           ✦
         </button>
       </div>
+    </PullToRefresh>
     </div>
   );
 }

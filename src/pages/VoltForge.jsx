@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { T, CW, CH } from '@/lib/voltforge/theme';
 import { DEFS } from '@/lib/voltforge/definitions';
 import { G, SIM, HIST } from '@/lib/voltforge/instances';
@@ -15,16 +16,36 @@ import InfoView from '@/components/voltforge/InfoView';
 import AIView from '@/components/voltforge/AIView';
 import SaveView from '@/components/voltforge/SaveView';
 
+const VIEW_TO_ROUTE = {
+  canvas: '/canvas',
+  parts: '/parts',
+  sim: '/sim',
+  ai: '/ai',
+  info: '/info',
+  save: '/save',
+};
+
+const ROUTE_TO_VIEW = {
+  '/canvas': 'canvas',
+  '/parts': 'parts',
+  '/sim': 'sim',
+  '/ai': 'ai',
+  '/info': 'info',
+  '/save': 'save',
+};
+
 export default function VoltForge() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   const [ver, setVer] = useState(0);
   const [placing, setPlacing] = useState(null);
-  const [selected, setSelected] = useState(null);   // component id that shows ✕/↻
+  const [selected, setSelected] = useState(null);
   const [wColor, setWColor] = useState(T.blue);
   const [simOn, setSimOn] = useState(false);
   const [simPaused, setSimPaused] = useState(false);
   const [simSnap, setSimSnap] = useState(null);
   const [activeCat, setActiveCat] = useState('sources');
-  const [view, setView] = useState('canvas');
   const [projName, setProjName] = useState('Untitled');
   const [projId, setProjId] = useState(() => uid('p'));
   const [aiHL, setAiHL] = useState({ compIds: [], type: 'info' });
@@ -32,42 +53,33 @@ export default function VoltForge() {
   const autoSnapRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
 
-  // Rubber-band overlay SVG ref — updated imperatively to avoid re-renders on every mousemove
   const rbSvgRef = useRef(null);
-
-  // ── Zoom / pan state ───────────────────────────────────
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const zoomRef = useRef(1);
-  const panRef = useRef({ x: 0, y: 0 });
-
-  // ── Drawing / drag wire refs ────────────────────────────
-  const drawing = useRef(null);   // { termId, compId } | { rewireId, fixedTermId, dragTermId } for rewire
+  const drawing = useRef(null);
   const mouse = useRef({ x: 0, y: 0 });
   const snapRef = useRef(null);
   const cvRef = useRef(null);
-
-  // Long-press tracking
   const lpTimer = useRef(null);
-  const lpActive = useRef(false);   // did long-press fire?
-  const compTouched = useRef(false); // did a touch start on a component?
+  const lpActive = useRef(null);
+  const compTouched = useRef(false);
+  const pinchRef = useRef(null);
+  const panDragRef = useRef(null);
 
-  // Pinch tracking
-  const pinchRef = useRef(null);  // { dist, cx, cy, panX, panY, zoom }
-  const panDragRef = useRef(null); // { startX, startY, panX, panY } — two-finger pan after pinch
+  // Determine current view from route
+  const view = ROUTE_TO_VIEW[location.pathname] || 'canvas';
 
-  // Wire SIM onChange → React
+  const setView = useCallback((newView) => {
+    const route = VIEW_TO_ROUTE[newView];
+    if (route) navigate(route);
+  }, [navigate]);
+
   useEffect(() => {
     SIM.onChange = () => setSimSnap(SIM.snap ? { ...SIM.snap } : null);
-    // Reset history and push the initial state on mount
     HIST.clear();
     HIST.push(G, { pid: projId, name: projName });
     setCanUndo(false);
     return () => { SIM.onChange = null; SIM.stop(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Imperatively update rubber-band SVG (no React re-render) ──
   const updateRubberBand = useCallback((drawOriginTerm, mx, my, snapTgt, isRewire, wColorVal) => {
     const svg = rbSvgRef.current;
     if (!svg) return;
@@ -116,7 +128,6 @@ export default function VoltForge() {
     setSelected(null);
   }, []);
 
-  // Validation
   const issues = useMemo(() => validateGraph(G), [ver]);
   const issuesByComp = useMemo(() => {
     const m = new Map();
@@ -129,8 +140,6 @@ export default function VoltForge() {
   const errors = issues.filter(i => i.severity === 'error');
   const warnings = issues.filter(i => i.severity === 'warning');
 
-  // ── Canvas coordinate helpers ─────────────────────────
-  // Convert screen coords → canvas world coords (accounting for zoom/pan)
   const screenToWorld = useCallback((sx, sy) => {
     const r = cvRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
     const cx = sx - r.left;
@@ -146,11 +155,9 @@ export default function VoltForge() {
     return screenToWorld(s.clientX, s.clientY);
   }, [screenToWorld]);
 
-  // ── Pinch-to-zoom + two-finger pan ────────────────────
   const onCanvasTouchStart = useCallback(e => {
     if (compTouched.current) { compTouched.current = false; return; }
     if (e.touches.length === 2) {
-      // Two fingers — enter pinch/pan mode, cancel any drawing
       drawing.current = null; snapRef.current = null;
       clearTimeout(lpTimer.current); lpActive.current = false;
       const [a, b] = e.touches;
@@ -165,7 +172,6 @@ export default function VoltForge() {
       e.preventDefault();
       return;
     }
-    // single finger — placing a part can land on any child element
     if (placing) {
       const { x, y } = eXY(e);
       const gs = 20;
@@ -174,7 +180,6 @@ export default function VoltForge() {
       setPlacing(null);
       return;
     }
-    // Components/terminals call e.stopPropagation(), so anything that reaches here is bare canvas
     if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); }
     setSelected(null);
   }, [placing, eXY, bump, clearRubberBand]);
@@ -188,14 +193,11 @@ export default function VoltForge() {
       setPlacing(null);
       return;
     }
-    // Components/terminals call e.stopPropagation(), so anything that reaches here is bare canvas
     if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); }
     setSelected(null);
   }, [placing, eXY, bump, clearRubberBand]);
 
-  // ── Global move / up ─────────────────────────────────
   const onGlobalMove = useCallback(e => {
-    // Pinch / two-finger pan
     if (e.touches?.length === 2 && pinchRef.current) {
       const [a, b] = e.touches;
       const newDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
@@ -228,7 +230,6 @@ export default function VoltForge() {
       : drawing.current.termId;
     snapRef.current = G.findSnap(x, y, excludeCompId, excludeTermId, drawing.current.rewireId);
 
-    // Update rubber-band imperatively — no React re-render
     const originTermId = drawing.current.rewireId ? drawing.current.fixedTermId : drawing.current.termId;
     const originTerm = G.terminals.get(originTermId);
     updateRubberBand(originTerm, x, y, snapRef.current, !!drawing.current.rewireId, wColor);
@@ -238,7 +239,7 @@ export default function VoltForge() {
 
   const onGlobalUp = useCallback(e => {
     pinchRef.current = null;
-    clearTimeout(lpTimer.current); // cancel any pending long-press rewire
+    clearTimeout(lpTimer.current);
     if (!drawing.current) return;
 
     const snap = snapRef.current;
@@ -253,7 +254,6 @@ export default function VoltForge() {
       if (snap?.valid) { G.addWire(drawing.current.termId, snap.term.id, wColor); bump(); }
     }
 
-    // AutoSnap: restart wire from same origin terminal
     if (autoSnapRef.current && !drawing.current?.rewireId && snap?.valid) {
       const restartTermId = drawing.current?.termId;
       const restartCompId = drawing.current?.compId;
@@ -272,7 +272,6 @@ export default function VoltForge() {
     clearRubberBand();
   }, [wColor, bump, clearRubberBand]);
 
-  // ── Mouse wheel zoom ──────────────────────────────────
   const onWheel = useCallback(e => {
     e.preventDefault();
     const r = cvRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
@@ -287,15 +286,13 @@ export default function VoltForge() {
     setZoom(newZoom); setPan({ x: newPanX, y: newPanY });
   }, []);
 
-  // Attach wheel listener with passive:false so we can preventDefault
   useEffect(() => {
     const el = cvRef.current;
     if (!el) return;
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [onWheel, view]); // re-attach when view changes (cvRef may remount)
+  }, [onWheel, view]);
 
-  // ── Native window listeners for move/up (passive:false for touch) ──
   const globalMoveRef = useRef(null);
   const globalUpRef = useRef(null);
   useEffect(() => { globalMoveRef.current = onGlobalMove; }, [onGlobalMove]);
@@ -316,17 +313,14 @@ export default function VoltForge() {
     };
   }, []);
 
-  // ── Terminal press — tap start → tap end → wire created ──
   const onTermPress = useCallback((termId, compId, e) => {
     if (placing) return;
     e.stopPropagation(); e.preventDefault();
     const { x, y } = eXY(e);
 
-    // Second tap: complete the wire to this terminal
     if (drawing.current && !drawing.current.rewireId && termId !== drawing.current.termId) {
       G.addWire(drawing.current.termId, termId, wColor);
       bump();
-      // If AutoSnap is on, chain from this terminal; otherwise clear
       if (autoSnapRef.current) {
         drawing.current = { termId, compId };
         mouse.current = { x, y };
@@ -340,16 +334,14 @@ export default function VoltForge() {
       return;
     }
 
-    // First tap: set origin terminal
     drawing.current = { termId, compId };
     mouse.current = { x, y };
     snapRef.current = null;
     setSelected(null);
   }, [eXY, placing, wColor, bump, clearRubberBand]);
 
-  // ── Component press — long-press to show buttons, drag to move ──
   const onCompPress = useCallback((compId, e) => {
-    if (placing) return; // let event bubble to canvas handler for placement
+    if (placing) return;
     compTouched.current = true;
     e.stopPropagation();
     if (drawing.current) return;
@@ -361,7 +353,6 @@ export default function VoltForge() {
     let moved = false;
     lpActive.current = false;
 
-    // Long-press timer → show ✕/↻
     clearTimeout(lpTimer.current);
     lpTimer.current = setTimeout(() => {
       if (!moved) {
@@ -370,7 +361,6 @@ export default function VoltForge() {
       }
     }, 480);
 
-    // Find the component's DOM element for live position update
     const compEl = cvRef.current?.querySelector(`[data-comp-id="${compId}"]`);
 
     const onM = ev => {
@@ -385,14 +375,12 @@ export default function VoltForge() {
       const nx = Math.round((ox + dxWorld) / gs) * gs;
       const ny = Math.round((oy + dyWorld) / gs) * gs;
       G.moveComponent(compId, nx, ny);
-      // Update position imperatively for smooth dragging
       if (compEl) { compEl.style.left = nx + 'px'; compEl.style.top = ny + 'px'; }
       if (ev.cancelable) ev.preventDefault();
     };
     const onU = () => {
       clearTimeout(lpTimer.current);
       if (moved) bump();
-      // Short tap with no long-press — just clear selection (don't toggle on)
       else if (!lpActive.current) setSelected(null);
       window.removeEventListener(isTouch ? 'touchmove' : 'mousemove', onM);
       window.removeEventListener(isTouch ? 'touchend' : 'mouseup', onU);
@@ -401,13 +389,11 @@ export default function VoltForge() {
     window.addEventListener(isTouch ? 'touchend' : 'mouseup', onU);
   }, [placing, bump]);
 
-  // Derived
   const comps = useMemo(() => [...G.components.values()], [ver]);
   const wires = useMemo(() => [...G.wires.values()], [ver]);
   const stats = G.stats;
   const selComp = selected ? G.components.get(selected) : null;
   const snap = simSnap;
-
   const isDrawing = !!drawing.current;
 
   const onWireLongPress = useCallback((wireId, fixedTermId, dragTermId, color, startX, startY) => {
@@ -416,7 +402,6 @@ export default function VoltForge() {
     snapRef.current = null;
   }, []);
 
-  // Sim controls
   const toggleSim = useCallback(() => {
     if (simOn) { SIM.stop(); setSimOn(false); setSimPaused(false); setSimSnap(null); }
     else { SIM.start(); setSimOn(true); }
@@ -429,6 +414,12 @@ export default function VoltForge() {
   const simCol = simStatus === 'running' ? T.green
     : simStatus === 'open' ? T.amber
       : simStatus === 'short' ? T.red : T.sub;
+
+  // Zoom/pan state
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
 
   return (
     <div

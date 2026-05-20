@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { T } from '@/lib/voltforge/theme';
 import { uid } from '@/lib/voltforge/graph';
 import { G, STORE, HIST, SIM } from '@/lib/voltforge/instances';
+import PullToRefresh from '@/components/voltforge/PullToRefresh';
 
 export default function SaveView({ projName, setProjName, projId, setProjId, bump, setSimOn, setSimSnap, setVer, setView, setSelected }) {
   const [savedList, setSavedList] = useState(() => STORE.list());
@@ -83,8 +84,13 @@ export default function SaveView({ projName, setProjName, projId, setProjId, bum
   };
 
   return (
-    <div style={{ width:'100%', height:'100%', overflowY:'auto',
-                  padding:'14px 14px 20px', display:'flex', flexDirection:'column', gap:10 }}>
+    <PullToRefresh
+      onRefresh={async () => {
+        setSavedList(STORE.list());
+      }}
+      refreshKey={savedList.length}
+    >
+      <div style={{ width:'100%', height:'100%', padding:'14px 14px 20px', display:'flex', flexDirection:'column', gap:10 }}>
 
       <div style={{ fontSize:9, color:T.sub, letterSpacing:'.12em', fontWeight:600 }}>PROJECTS</div>
 
@@ -161,6 +167,7 @@ export default function SaveView({ projName, setProjName, projId, setProjId, bum
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </PullToRefresh>
   );
 }
