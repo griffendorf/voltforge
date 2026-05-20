@@ -15,6 +15,7 @@ import SimView from '@/components/voltforge/SimView';
 import InfoView from '@/components/voltforge/InfoView';
 import AIView from '@/components/voltforge/AIView';
 import SaveView from '@/components/voltforge/SaveView';
+import SlideTransition from '@/components/voltforge/SlideTransition';
 
 const VIEW_TO_ROUTE = {
   canvas: '/canvas',
@@ -456,65 +457,96 @@ export default function VoltForge() {
         }}
       />
 
-      <div
-        style={{ flex: 1, overflow: 'hidden', position: 'relative', touchAction: 'none' }}
-      >
-        {view === 'canvas' && (
-          <CanvasView
-            cvRef={cvRef} rbSvgRef={rbSvgRef}
-            comps={comps} wires={wires}
-            placing={placing} isDrawing={isDrawing} selected={selected}
-            wColor={wColor} snap={snap} simOn={simOn} errors={errors}
-            issuesByComp={issuesByComp} aiHL={aiHL}
-            zoom={zoom} pan={pan}
-            onCanvasTouchStart={onCanvasTouchStart}
-            onCanvasMouseDown={onCanvasMouseDown}
-            onCompPress={onCompPress}
-            onWireLongPress={onWireLongPress}
-            onTermPress={onTermPress}
-            setWColor={setWColor}
-            setSelected={setSelected}
-            bump={bump}
-            isRewire={!!drawing.current?.rewireId}
-          />
+      <SlideTransition activeView={view}>
+        {(currentView) => (
+          <div
+            style={{ flex: 1, overflow: 'hidden', position: 'relative', touchAction: 'none', height: '100%' }}
+          >
+            {currentView === 'canvas' && (
+              <CanvasView
+                cvRef={cvRef} rbSvgRef={rbSvgRef}
+                comps={comps} wires={wires}
+                placing={placing} isDrawing={isDrawing} selected={selected}
+                wColor={wColor} snap={snap} simOn={simOn} errors={errors}
+                issuesByComp={issuesByComp} aiHL={aiHL}
+                zoom={zoom} pan={pan}
+                onCanvasTouchStart={onCanvasTouchStart}
+                onCanvasMouseDown={onCanvasMouseDown}
+                onCompPress={onCompPress}
+                onWireLongPress={onWireLongPress}
+                onTermPress={onTermPress}
+                setWColor={setWColor}
+                setSelected={setSelected}
+                bump={bump}
+                isRewire={!!drawing.current?.rewireId}
+              />
+            )}
+            {currentView === 'parts' && (
+              <PartsView
+                placing={placing} setPlacing={setPlacing}
+                activeCat={activeCat} setActiveCat={setActiveCat}
+                setView={setView}
+              />
+            )}
+            {currentView === 'sim' && (
+              <SimView
+                simOn={simOn} simPaused={simPaused} snap={snap}
+                simStatus={simStatus} simCol={simCol} comps={comps}
+                toggleSim={toggleSim} togglePause={togglePause} stepOnce={stepOnce}
+                setSelected={setSelected} setView={setView}
+              />
+            )}
+            {currentView === 'info' && (
+              <InfoView
+                issues={issues} errors={errors} warnings={warnings}
+                comps={comps} stats={stats} selComp={selComp} snap={snap}
+                selected={selected} setSelected={setSelected}
+                wColor={wColor} setWColor={setWColor} bump={bump}
+              />
+            )}
+            {currentView === 'ai' && (
+              <AIView snap={snap} setAiHL={setAiHL} setView={setView} />
+            )}
+            {currentView === 'save' && (
+              <SaveView
+                projName={projName} setProjName={setProjName}
+                projId={projId} setProjId={setProjId}
+                bump={bump} setSimOn={setSimOn} setSimSnap={setSimSnap}
+                setVer={setVer} setView={setView} setSelected={setSelected}
+              />
+            )}
+          </div>
         )}
-        {view === 'parts' && (
-          <PartsView
-            placing={placing} setPlacing={setPlacing}
-            activeCat={activeCat} setActiveCat={setActiveCat}
-            setView={setView}
-          />
-        )}
-        {view === 'sim' && (
-          <SimView
-            simOn={simOn} simPaused={simPaused} snap={snap}
-            simStatus={simStatus} simCol={simCol} comps={comps}
-            toggleSim={toggleSim} togglePause={togglePause} stepOnce={stepOnce}
-            setSelected={setSelected} setView={setView}
-          />
-        )}
-        {view === 'info' && (
-          <InfoView
-            issues={issues} errors={errors} warnings={warnings}
-            comps={comps} stats={stats} selComp={selComp} snap={snap}
-            selected={selected} setSelected={setSelected}
-            wColor={wColor} setWColor={setWColor} bump={bump}
-          />
-        )}
-        {view === 'ai' && (
-          <AIView snap={snap} setAiHL={setAiHL} setView={setView} />
-        )}
-        {view === 'save' && (
-          <SaveView
-            projName={projName} setProjName={setProjName}
-            projId={projId} setProjId={setProjId}
-            bump={bump} setSimOn={setSimOn} setSimSnap={setSimSnap}
-            setVer={setVer} setView={setView} setSelected={setSelected}
-          />
-        )}
-      </div>
+      </SlideTransition>
 
-      <VFBottomNav view={view} setView={setView} />
+      <VFBottomNav 
+        view={view} 
+        setView={setView} 
+        onTabReset={(tabId) => {
+          // Reset view-specific state when tapping active tab
+          if (tabId === 'ai') {
+            // Reset AI chat
+            setAiHL({ compIds: [], type: 'info' });
+          } else if (tabId === 'info') {
+            // Deselect component
+            setSelected(null);
+          } else if (tabId === 'canvas') {
+            // Reset zoom and pan
+            zoomRef.current = 1;
+            panRef.current = { x: 0, y: 0 };
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+            setSelected(null);
+          } else if (tabId === 'sim') {
+            // No specific reset needed
+          } else if (tabId === 'parts') {
+            // Cancel placing mode
+            if (placing) setPlacing(null);
+          } else if (tabId === 'save') {
+            // No specific reset needed
+          }
+        }}
+      />
     </div>
   );
 }

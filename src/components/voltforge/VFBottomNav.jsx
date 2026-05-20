@@ -15,14 +15,21 @@ const EXTERNAL = [
   { id:'account',icon:'⚙', label:'ACCOUNT',href:'/account' },
 ];
 
-export default function VFBottomNav({ view, setView }) {
+export default function VFBottomNav({ view, setView, onTabReset }) {
   const navigate = useNavigate();
+  const handleTabClick = (tabId) => {
+    if (view === tabId && onTabReset) {
+      onTabReset(tabId);
+    } else {
+      setView(tabId);
+    }
+  };
   return (
     <div style={{ height:54, flexShrink:0, display:'flex', background:T.panel,
                   borderTop:`1px solid ${T.b1}`,
                   boxShadow:'0 -2px 14px rgba(0,0,0,.7)' }}>
       {NAV.map(n => (
-        <button key={n.id} onClick={() => setView(n.id)}
+        <button key={n.id} onClick={() => handleTabClick(n.id)}
           style={{ flex:1, display:'flex', flexDirection:'column',
                    alignItems:'center', justifyContent:'center', gap:3,
                    border:'none', background:'transparent',
