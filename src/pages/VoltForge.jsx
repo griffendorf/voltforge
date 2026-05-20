@@ -172,8 +172,7 @@ export default function VoltForge() {
       setPlacing(null);
       return;
     }
-    // Only handle bare canvas taps (not component/terminal children)
-    if (!e.target.dataset.cv) return;
+    // Components/terminals call e.stopPropagation(), so anything that reaches here is bare canvas
     if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); }
     setSelected(null);
   }, [placing, eXY, bump, clearRubberBand]);
@@ -187,7 +186,7 @@ export default function VoltForge() {
       setPlacing(null);
       return;
     }
-    if (!e.target.dataset.cv) return;
+    // Components/terminals call e.stopPropagation(), so anything that reaches here is bare canvas
     if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); }
     setSelected(null);
   }, [placing, eXY, bump, clearRubberBand]);
