@@ -119,12 +119,13 @@ export class CircuitGraph {
     this._bump();
   }
 
-  canConnect(fromId, toId) {
+  canConnect(fromId, toId, ignoreWireId) {
     if (!fromId || !toId || fromId === toId) return { ok:false };
     const tA = this.terminals.get(fromId), tB = this.terminals.get(toId);
     if (!tA || !tB) return { ok:false, reason:'Terminal missing' };
     if (tA.compId === tB.compId) return { ok:false, reason:'Same component' };
     for (const wid of tA.wireIds) {
+      if (ignoreWireId && wid === ignoreWireId) continue;
       const w = this.wires.get(wid);
       if (w && (w.from === toId || w.to === toId)) return { ok:false, reason:'Already wired' };
     }
@@ -156,14 +157,14 @@ export class CircuitGraph {
     this.wires.delete(id);
   }
 
-  findSnap(wx, wy, excludeCompId, fromTermId) {
+  findSnap(wx, wy, excludeCompId, fromTermId, ignoreWireId) {
     let best = null, bestD = SNAP_R;
     this.terminals.forEach(t => {
       if (t.compId === excludeCompId) return;
       const d = Math.hypot(t.wx - wx, t.wy - wy);
       if (d < bestD) {
         bestD = d;
-        best = { term:t, dist:d, valid: this.canConnect(fromTermId, t.id).ok };
+        best = { term:t, dist:d, valid: this.canConnect(fromTermId, t.id, ignoreWireId).ok };
       }
     });
     return best;
