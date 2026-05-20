@@ -28,6 +28,8 @@ export default function VoltForge() {
   const [projName, setProjName] = useState('Untitled');
   const [projId, setProjId] = useState(() => uid('p'));
   const [aiHL, setAiHL] = useState({ compIds: [], type: 'info' });
+  const [autoSnap, setAutoSnap] = useState(false);
+  const autoSnapRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
 
   // Rubber-band overlay SVG ref — updated imperatively to avoid re-renders on every mousemove
@@ -251,6 +253,20 @@ export default function VoltForge() {
       if (snap?.valid) { G.addWire(drawing.current.termId, snap.term.id, wColor); bump(); }
     }
 
+    // AutoSnap: restart wire from same origin terminal
+    if (autoSnapRef.current && !drawing.current?.rewireId && snap?.valid) {
+      const restartTermId = drawing.current?.termId;
+      const restartCompId = drawing.current?.compId;
+      drawing.current = null;
+      snapRef.current = null;
+      clearRubberBand();
+      if (restartTermId) {
+        drawing.current = { termId: restartTermId, compId: restartCompId };
+        snapRef.current = null;
+      }
+      return;
+    }
+
     drawing.current = null;
     snapRef.current = null;
     clearRubberBand();
@@ -284,6 +300,7 @@ export default function VoltForge() {
   const globalUpRef = useRef(null);
   useEffect(() => { globalMoveRef.current = onGlobalMove; }, [onGlobalMove]);
   useEffect(() => { globalUpRef.current = onGlobalUp; }, [onGlobalUp]);
+  useEffect(() => { autoSnapRef.current = autoSnap; }, [autoSnap]);
   useEffect(() => {
     const move = e => globalMoveRef.current?.(e);
     const up = e => globalUpRef.current?.(e);
@@ -437,10 +454,10 @@ export default function VoltForge() {
       }}
     >
       <VFHeader
-        simOn={simOn} simPaused={simPaused} simSnap={snap}
+        simOn={simOn} simSnap={snap}
         simStatus={simStatus} simCol={simCol}
         comps={comps} wires={wires} errors={errors} warnings={warnings}
-        toggleSim={toggleSim} togglePause={togglePause}
+        autoSnap={autoSnap} setAutoSnap={setAutoSnap}
         canUndo={canUndo} doUndo={doUndo}
         zoom={zoom}
         onZoomIn={() => {

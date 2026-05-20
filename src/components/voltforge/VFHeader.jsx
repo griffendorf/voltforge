@@ -1,9 +1,9 @@
 import { T } from '@/lib/voltforge/theme';
 
 export default function VFHeader({
-  simOn, simPaused, simSnap, simStatus, simCol,
+  simOn, simSnap, simStatus, simCol,
   comps, wires, errors, warnings,
-  toggleSim, togglePause,
+  autoSnap, setAutoSnap,
   canUndo, doUndo,
   zoom, onZoomIn, onZoomOut, onZoomReset,
 }) {
@@ -80,32 +80,23 @@ export default function VFHeader({
         )}
       </div>
 
-      {/* RUN / STOP */}
-      <button onClick={toggleSim}
-        style={{ height: 34, padding: '0 16px', borderRadius: 9, border: 'none', flexShrink: 0,
-                 fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 700,
-                 cursor: 'pointer', touchAction: 'manipulation',
-                 background: simOn
-                   ? 'linear-gradient(135deg,#ff3a3a,#ff6b35)'
-                   : 'linear-gradient(135deg,#39ff7a,#00ffcc)',
-                 color: '#000',
-                 boxShadow: simOn ? '0 0 14px rgba(255,58,58,.4)' : '0 0 14px rgba(57,255,122,.4)',
-                 transition: 'box-shadow .15s, transform .1s',
-                 WebkitTapHighlightColor: 'transparent' }}>
-        {simOn ? '⏹ STOP' : '▶ RUN'}
+      {/* AutoSnap toggle */}
+      <button
+        onClick={() => setAutoSnap(v => !v)}
+        title={autoSnap ? 'AutoSnap ON — tap to disable' : 'AutoSnap OFF — tap to enable'}
+        style={{
+          height: 34, padding: '0 12px', borderRadius: 9, flexShrink: 0,
+          border: `1.5px solid ${autoSnap ? T.cyan : T.b2}`,
+          background: autoSnap ? `${T.cyan}18` : T.card,
+          color: autoSnap ? T.cyan : T.sub,
+          fontFamily: "'JetBrains Mono',monospace", fontSize: 9, fontWeight: 700,
+          cursor: 'pointer', touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          boxShadow: autoSnap ? `0 0 10px ${T.cyan}44` : 'none',
+          transition: 'all .15s',
+        }}>
+        {autoSnap ? '⚡ SNAP' : '○ SNAP'}
       </button>
-
-      {/* Pause */}
-      {simOn && (
-        <button onClick={togglePause}
-          style={{ height: 34, padding: '0 10px', borderRadius: 9, flexShrink: 0,
-                   border: `1px solid ${T.amber}55`, background: `${T.amber}12`,
-                   color: T.amber, fontSize: 11, cursor: 'pointer',
-                   touchAction: 'manipulation',
-                   WebkitTapHighlightColor: 'transparent' }}>
-          {simPaused ? '▶' : '⏸'}
-        </button>
-      )}
     </div>
   );
 }
