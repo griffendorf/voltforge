@@ -261,8 +261,8 @@ export default function CanvasView({
                     <button
                       onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }}
                       onTouchStart={e => { e.stopPropagation(); e.preventDefault(); }}
-                      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); G.rotateComponent(comp.id); bump(); }}
-                      onClick={e => { e.stopPropagation(); G.rotateComponent(comp.id); bump(); }}
+                      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); G.rotateComponent(comp.id); setSelected(comp.id); bump(); }}
+                      onClick={e => { e.stopPropagation(); G.rotateComponent(comp.id); setSelected(comp.id); bump(); }}
                       style={{
                         position: 'absolute', top: -12, left: -12, width: 28, height: 28,
                         borderRadius: '50%', border: 'none', background: T.purple, color: '#fff',

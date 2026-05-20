@@ -48,6 +48,7 @@ export default function VoltForge() {
   // Long-press tracking
   const lpTimer = useRef(null);
   const lpActive = useRef(false);   // did long-press fire?
+  const compTouched = useRef(false); // did a touch start on a component?
 
   // Pinch tracking
   const pinchRef = useRef(null);  // { dist, cx, cy, panX, panY, zoom }
@@ -145,6 +146,7 @@ export default function VoltForge() {
 
   // ── Pinch-to-zoom + two-finger pan ────────────────────
   const onCanvasTouchStart = useCallback(e => {
+    if (compTouched.current) { compTouched.current = false; return; }
     if (e.touches.length === 2) {
       // Two fingers — enter pinch/pan mode, cancel any drawing
       drawing.current = null; snapRef.current = null;
@@ -317,6 +319,7 @@ export default function VoltForge() {
   // ── Component press — long-press to show buttons, drag to move ──
   const onCompPress = useCallback((compId, e) => {
     if (placing) return; // let event bubble to canvas handler for placement
+    compTouched.current = true;
     e.stopPropagation();
     if (drawing.current) return;
     const isTouch = !!e.touches;
@@ -358,8 +361,8 @@ export default function VoltForge() {
     const onU = () => {
       clearTimeout(lpTimer.current);
       if (moved) bump();
-      // Short tap (no move, no long-press) — deselect
-      else if (!lpActive.current) setSelected(s => s === compId ? null : compId);
+      // Short tap with no long-press — just clear selection (don't toggle on)
+      else if (!lpActive.current) setSelected(null);
       window.removeEventListener(isTouch ? 'touchmove' : 'mousemove', onM);
       window.removeEventListener(isTouch ? 'touchend' : 'mouseup', onU);
     };
