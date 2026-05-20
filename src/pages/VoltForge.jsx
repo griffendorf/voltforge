@@ -6,6 +6,7 @@ import { G, SIM, HIST } from '@/lib/voltforge/instances';
 import { uid } from '@/lib/voltforge/graph';
 import { validateGraph } from '@/lib/voltforge/validation';
 import { bezier, rubber } from '@/lib/voltforge/routing';
+import { buildAIContext } from '@/lib/voltforge/ai-context';
 
 import VFHeader from '@/components/voltforge/VFHeader';
 import VFBottomNav from '@/components/voltforge/VFBottomNav';
@@ -50,6 +51,10 @@ export default function VoltForge() {
   const [projName, setProjName] = useState('Untitled');
   const [projId, setProjId] = useState(() => uid('p'));
   const [aiHL, setAiHL] = useState({ compIds: [], type: 'info' });
+  const [aiMsgs, setAiMsgs] = useState([{
+    role:'assistant',
+    content:"👋 I'm **Volt·AI**! I can analyze your circuit OR build one for you! Just describe what you need (e.g., 'Add a battery and LED with a resistor'), and I'll place components and connect wires automatically.",
+  }]);
   const [autoSnap, setAutoSnap] = useState(false);
   const autoSnapRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
@@ -505,7 +510,14 @@ export default function VoltForge() {
               />
             )}
             {currentView === 'ai' && (
-              <AIView snap={snap} setAiHL={setAiHL} setView={setView} bump={bump} />
+              <AIView 
+                snap={snap} 
+                setAiHL={setAiHL} 
+                setView={setView} 
+                bump={bump}
+                aiMsgs={aiMsgs}
+                setAiMsgs={setAiMsgs}
+              />
             )}
             {currentView === 'save' && (
               <SaveView

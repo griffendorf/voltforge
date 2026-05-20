@@ -12,23 +12,19 @@ const mdRender = text =>
       .replace(/`([^`]+)`/g,'<code style="background:rgba(0,212,255,.12);padding:0 3px;border-radius:3px">$1</code>')
       .replace(/\n/g,'<br/>');
 
-export default function AIView({ snap, setAiHL, setView, bump }) {
-  const [msgs, setMsgs] = useState([{
-    role:'assistant',
-    content:"👋 I'm **Volt·AI**! I can analyze your circuit OR build one for you! Just describe what you need (e.g., 'Add a battery and LED with a resistor'), and I'll place components and connect wires automatically.",
-  }]);
+export default function AIView({ snap, setAiHL, setView, bump, aiMsgs, setAiMsgs }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior:'smooth' });
-  }, [msgs, loading]);
+  }, [aiMsgs, loading]);
 
   const sendAI = useCallback(async (text) => {
     if (!text.trim() || loading) return;
     setInput('');
-    setMsgs(m => [...m, { role:'user', content:text }]);
+    setAiMsgs(m => [...m, { role:'user', content:text }]);
     setLoading(true);
 
     const context = buildAIContext(G, snap);
@@ -101,7 +97,7 @@ USER QUESTION: ${text}`;
 
             bump();
             const responseText = raw.replace(/<build>[\s\S]*?<\/build>/g, '').trim();
-            setMsgs(m => [...m, { role:'assistant', content:responseText || '✓ Circuit built successfully!' }]);
+            setAiMsgs(m => [...m, { role:'assistant', content:responseText || '✓ Circuit built successfully!' }]);
             setView('canvas');
             return;
           }
@@ -115,7 +111,7 @@ USER QUESTION: ${text}`;
       try { if (hlMatch) hl = JSON.parse(hlMatch[1]); } catch {}
 
       const clean = raw.replace(/<hl>[\s\S]*?<\/hl>/g, '').replace(/<build>[\s\S]*?<\/build>/g, '').trim();
-      setMsgs(m => [...m, { role:'assistant', content:clean, hl }]);
+      setAiMsgs(m => [...m, { role:'assistant', content:clean, hl }]);
 
       if (hl?.compIds?.length) {
         setAiHL({ compIds: hl.compIds, type: hl.type || 'info' });
@@ -125,10 +121,10 @@ USER QUESTION: ${text}`;
       const fb = snap?.status === 'running'
         ? `Circuit is active: ${snap.Vs?.toFixed(1)}V, ${(snap.I*1000)?.toFixed(1)}mA.`
         : 'No simulation running — press ▶ RUN first.';
-      setMsgs(m => [...m, { role:'assistant', content:`_(offline)_ ${fb}` }]);
+      setAiMsgs(m => [...m, { role:'assistant', content:`_(offline)_ ${fb}` }]);
     }
     setLoading(false);
-  }, [loading, snap, setAiHL]);
+  }, [loading, snap, setAiHL, setAiMsgs]);
 
   return (
     <div style={{ width:'100%', height:'100%', display:'flex',
@@ -137,11 +133,11 @@ USER QUESTION: ${text}`;
       onRefresh={async () => {
         // Refresh chat context
       }}
-      refreshKey={msgs.length}
+      refreshKey={aiMsgs.length}
     >
       <div style={{ flex:1, overflowY:'auto', padding:'12px 12px 8px',
                     display:'flex', flexDirection:'column', gap:10 }}>
-        {msgs.map((msg, i) => (
+        {aiMsgs.map((msg, i) => (
           <div key={i} style={{ display:'flex', flexDirection:'column',
                                 alignItems: msg.role==='user' ? 'flex-end' : 'flex-start',
                                 animation:'popIn .2s ease' }}>
