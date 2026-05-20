@@ -238,6 +238,7 @@ export default function VoltForge() {
 
   // ── Terminal press — start drawing OR long-press to rewire ──
   const onTermPress = useCallback((termId, compId, e) => {
+    if (placing) return; // let event bubble to canvas for placement
     e.stopPropagation(); e.preventDefault();
     const { x, y } = eXY(e);
     const term = G.terminals.get(termId);
@@ -280,8 +281,9 @@ export default function VoltForge() {
 
   // ── Component press — long-press to show buttons, drag to move ──
   const onCompPress = useCallback((compId, e) => {
+    if (placing) return; // let event bubble to canvas handler for placement
     e.stopPropagation();
-    if (placing || drawing.current) return;
+    if (drawing.current) return;
     const isTouch = !!e.touches;
     const gXY = ev => { const s = ev.touches?.[0] || ev.changedTouches?.[0] || ev; return { x: s.clientX, y: s.clientY }; };
     const comp = G.components.get(compId);
