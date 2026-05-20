@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 
 export default function LoginScreen() {
@@ -113,6 +114,3 @@ function SignInButton({ onClick, hoverColor, label, children }) {
     </button>
   );
 }
-
-// useState needed for hover in SignInButton
-import { useState } from 'react';
