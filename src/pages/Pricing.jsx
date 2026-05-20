@@ -14,7 +14,7 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    price: '$9.99',
+    price: '$1.99',
     period: '/month',
     color: '#00d4ff',
     features: ['Unlimited components', 'All wire colors', 'Circuit simulation', 'Cloud save/load', 'Undo history (50 steps)'],
@@ -23,7 +23,7 @@ const PLANS = [
   {
     id: 'premium',
     name: 'Premium',
-    price: '$19.99',
+    price: '$2.99',
     period: '/month',
     color: '#39ff7a',
     features: ['Everything in Pro', 'AI circuit assistant', 'Priority support', 'Undo history (unlimited)', 'Export diagrams'],

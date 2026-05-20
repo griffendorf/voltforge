@@ -3,7 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 const PLANS = {
   pro: {
     name: 'VoltForge Pro',
-    price: '9.99',
+    price: '1.99',
     subscriptionInfo: {
       subscriptionSettings: { frequency: 'MONTH' },
       title: 'VoltForge Pro – Monthly',
@@ -12,7 +12,7 @@ const PLANS = {
   },
   premium: {
     name: 'VoltForge Premium',
-    price: '19.99',
+    price: '2.99',
     subscriptionInfo: {
       subscriptionSettings: { frequency: 'MONTH' },
       title: 'VoltForge Premium – Monthly',
