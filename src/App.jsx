@@ -9,6 +9,7 @@ import LoginScreen from '@/components/LoginScreen';
 import VoltForge from '@/pages/VoltForge';
 import Pricing from '@/pages/Pricing';
 import ThankYou from '@/pages/ThankYou';
+import AccountSettings from '@/pages/AccountSettings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -31,10 +32,11 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<VoltForge />} />
-      <Route path="/pricing" element={<Pricing />} />
-      <Route path="/thank-you" element={<ThankYou />} />
-      <Route path="*" element={<PageNotFound />} />
+    <Route path="/" element={<VoltForge />} />
+    <Route path="/pricing" element={<Pricing />} />
+    <Route path="/thank-you" element={<ThankYou />} />
+    <Route path="/account" element={<AccountSettings />} />
+    <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };

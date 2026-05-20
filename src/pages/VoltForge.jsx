@@ -433,10 +433,15 @@ export default function VoltForge() {
   return (
     <div
       style={{
-        display: 'flex', flexDirection: 'column', height: '100vh',
+        display: 'flex', flexDirection: 'column',
+        height: '100dvh',
+        minHeight: '-webkit-fill-available',
         background: T.bg, color: T.text,
-        fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-        overflow: 'hidden', userSelect: 'none',
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 'clamp(11px, 2.5vw, 13px)',
+        overflow: 'hidden',
+        userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
       <VFHeader
