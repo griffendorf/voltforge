@@ -85,7 +85,6 @@
   body {
     @apply bg-background text-foreground;
     overflow: hidden;
-    touch-action: none;
   }
 }
 

@@ -399,10 +399,8 @@ export default function VoltForge() {
         display: 'flex', flexDirection: 'column', height: '100vh',
         background: T.bg, color: T.text,
         fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-        overflow: 'hidden', userSelect: 'none', touchAction: 'none'
+        overflow: 'hidden', userSelect: 'none',
       }}
-      onMouseMove={onGlobalMove} onTouchMove={onGlobalMove}
-      onMouseUp={onGlobalUp} onTouchEnd={onGlobalUp}
     >
       <VFHeader
         simOn={simOn} simPaused={simPaused} simSnap={snap}
@@ -425,7 +423,11 @@ export default function VoltForge() {
         }}
       />
 
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+      <div
+        style={{ flex: 1, overflow: 'hidden', position: 'relative', touchAction: 'none' }}
+        onMouseMove={onGlobalMove} onTouchMove={onGlobalMove}
+        onMouseUp={onGlobalUp} onTouchEnd={onGlobalUp}
+      >
         {view === 'canvas' && (
           <CanvasView
             cvRef={cvRef} rbSvgRef={rbSvgRef}
