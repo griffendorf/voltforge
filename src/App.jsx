@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import LoginScreen from '@/components/LoginScreen';
 import VoltForge from '@/pages/VoltForge';
 import Pricing from '@/pages/Pricing';
 import ThankYou from '@/pages/ThankYou';
@@ -24,8 +25,7 @@ const AuthenticatedApp = () => {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
+        return <LoginScreen />;
     }
   }
 
