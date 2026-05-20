@@ -82,22 +82,27 @@ export default function VFHeader({
 
       {/* RUN / STOP */}
       <button onClick={toggleSim}
-        style={{ height: 32, padding: '0 14px', borderRadius: 9, border: 'none', flexShrink: 0,
-                 fontFamily: "'Orbitron',sans-serif", fontSize: 9, fontWeight: 700,
+        style={{ height: 34, padding: '0 16px', borderRadius: 9, border: 'none', flexShrink: 0,
+                 fontFamily: "'Orbitron',sans-serif", fontSize: 10, fontWeight: 700,
+                 cursor: 'pointer', touchAction: 'manipulation',
                  background: simOn
                    ? 'linear-gradient(135deg,#ff3a3a,#ff6b35)'
                    : 'linear-gradient(135deg,#39ff7a,#00ffcc)',
                  color: '#000',
-                 boxShadow: simOn ? '0 0 10px rgba(255,58,58,.5)' : '0 0 12px rgba(57,255,122,.5)' }}>
-        {simOn ? '⏹' : '▶ RUN'}
+                 boxShadow: simOn ? '0 0 14px rgba(255,58,58,.4)' : '0 0 14px rgba(57,255,122,.4)',
+                 transition: 'box-shadow .15s, transform .1s',
+                 WebkitTapHighlightColor: 'transparent' }}>
+        {simOn ? '⏹ STOP' : '▶ RUN'}
       </button>
 
       {/* Pause */}
       {simOn && (
         <button onClick={togglePause}
-          style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+          style={{ height: 34, padding: '0 10px', borderRadius: 9, flexShrink: 0,
                    border: `1px solid ${T.amber}55`, background: `${T.amber}12`,
-                   color: T.amber, fontSize: 16 }}>
+                   color: T.amber, fontSize: 11, cursor: 'pointer',
+                   touchAction: 'manipulation',
+                   WebkitTapHighlightColor: 'transparent' }}>
           {simPaused ? '▶' : '⏸'}
         </button>
       )}
