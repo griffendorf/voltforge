@@ -327,12 +327,12 @@ export default function CanvasView({
         {/* Wire line-type picker */}
         {(() => {
           const types = [
-            { label: 'Signal',  color: T.blue   },
-            { label: 'Data',    color: T.cyan   },
-            { label: 'Power',   color: T.amber  },
-            { label: 'Ground',  color: T.green  },
-            { label: 'Fault',   color: T.red    },
-            { label: 'Bus',     color: T.purple },
+            { label: 'Blue',    color: T.blue   },
+            { label: 'Cyan',    color: T.cyan   },
+            { label: 'Green',   color: T.green  },
+            { label: 'Amber',   color: T.amber  },
+            { label: 'Red',     color: T.red    },
+            { label: 'Purple',  color: T.purple },
           ];
           const cur = types.find(t => t.color === wColor) || types[0];
           return (
