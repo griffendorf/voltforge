@@ -121,9 +121,7 @@ export default function VoltForge() {
       e.preventDefault();
       return;
     }
-    // single finger — normal canvas tap
-    if (!e.target.dataset.cv) return;
-
+    // single finger — placing a part can land on any child element
     if (placing) {
       const { x, y } = eXY(e);
       const gs = 20;
@@ -132,12 +130,13 @@ export default function VoltForge() {
       setPlacing(null);
       return;
     }
+    // Only handle bare canvas taps (not component/terminal children)
+    if (!e.target.dataset.cv) return;
     if (drawing.current) { drawing.current = null; snapRef.current = null; setDrawVer(v => v + 1); }
     setSelected(null);
   }, [placing, eXY, bump]);
 
   const onCanvasMouseDown = useCallback(e => {
-    if (!e.target.dataset.cv) return;
     if (placing) {
       const { x, y } = eXY(e);
       const gs = 20;
@@ -146,6 +145,7 @@ export default function VoltForge() {
       setPlacing(null);
       return;
     }
+    if (!e.target.dataset.cv) return;
     if (drawing.current) { drawing.current = null; snapRef.current = null; setDrawVer(v => v + 1); }
     setSelected(null);
   }, [placing, eXY, bump]);
