@@ -5,13 +5,15 @@ import { bezier } from '@/lib/voltforge/routing';
 
 export default function CanvasView({
   cvRef, rbSvgRef, comps, wires, placing, isDrawing, selected,
-  wColor, snap,
+  wColor, snap, simOn, errors,
   issuesByComp, aiHL,
   zoom, pan,
   onCanvasTouchStart, onCanvasMouseDown,
   onCompPress, onTermPress, setWColor, setSelected, bump,
   isRewire,
 }) {
+  const simHasErrors = simOn && errors?.length > 0;
+  const simRunning = simOn && !simHasErrors;
   const hint = isRewire ? 'Drag wire end to a new terminal'
     : isDrawing ? 'Drag to a terminal to connect'
     : placing ? `Tap canvas to place ${DEFS[placing]?.label}`
@@ -148,8 +150,21 @@ export default function CanvasView({
                 : bh.state === 'FAULT' ? T.red : null) : null;
             const isAiHL = aiHL.compIds.includes(comp.id);
             const aiHLCol = { info: T.blue, warning: T.amber, error: T.red, success: T.green }[aiHL.type] || T.blue;
-            const borderColor = isSel ? T.blue : isAiHL ? aiHLCol : simBCol || issColor || T.b2;
-            const glowColor = isSel ? T.blue : isAiHL ? aiHLCol : simBCol || issColor;
+
+            // Sim glow effects
+            const isErrorComp = simHasErrors && hasErr;
+            const isHotComp = simRunning;
+            const hotColor = '#ff6b00';
+            const errGlowColor = T.red;
+
+            const borderColor = isSel ? T.blue
+              : isErrorComp ? errGlowColor
+              : isHotComp ? hotColor
+              : isAiHL ? aiHLCol : simBCol || issColor || T.b2;
+            const glowColor = isSel ? T.blue
+              : isErrorComp ? errGlowColor
+              : isHotComp ? hotColor
+              : isAiHL ? aiHLCol : simBCol || issColor;
 
             return (
               <div key={comp.id}
@@ -165,14 +180,24 @@ export default function CanvasView({
                 {/* Card */}
                 <div style={{
                   position: 'absolute', inset: 0, borderRadius: 13,
-                  background: T.card, border: `1.5px solid ${borderColor}`,
+                  background: isHotComp
+                    ? 'radial-gradient(ellipse at center, #1a0d00 0%, #0d0a08 100%)'
+                    : isErrorComp
+                    ? 'radial-gradient(ellipse at center, #1a0000 0%, #0d0808 100%)'
+                    : T.card,
+                  border: `1.5px solid ${borderColor}`,
                   boxShadow: isSel
                     ? `0 0 0 2.5px ${T.blue}44, 0 0 20px ${T.blue}22`
+                    : isHotComp
+                    ? `0 0 0 2px ${hotColor}66, 0 0 18px ${hotColor}55, 0 0 35px ${hotColor}22`
+                    : isErrorComp
+                    ? `0 0 0 2px ${errGlowColor}88, 0 0 18px ${errGlowColor}66, 0 0 35px ${errGlowColor}33`
                     : glowColor ? `0 0 0 2px ${glowColor}44, 0 0 14px ${glowColor}28`
                     : '0 2px 10px rgba(0,0,0,.45)',
                   cursor: 'grab', display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center', gap: 3,
-                  overflow: 'hidden', transition: 'border-color .2s, box-shadow .2s',
+                  overflow: 'hidden', transition: 'border-color .2s, box-shadow .2s, background .3s',
+                  animation: isErrorComp ? 'stateBlink .8s ease-in-out infinite' : 'none',
                 }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
                                 background: def.color, opacity: .65, borderRadius: '13px 13px 0 0' }} />

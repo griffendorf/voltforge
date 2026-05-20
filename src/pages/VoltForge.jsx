@@ -432,7 +432,7 @@ export default function VoltForge() {
             cvRef={cvRef} rbSvgRef={rbSvgRef}
             comps={comps} wires={wires}
             placing={placing} isDrawing={isDrawing} selected={selected}
-            wColor={wColor} snap={snap}
+            wColor={wColor} snap={snap} simOn={simOn} errors={errors}
             issuesByComp={issuesByComp} aiHL={aiHL}
             zoom={zoom} pan={pan}
             onCanvasTouchStart={onCanvasTouchStart}
