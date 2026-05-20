@@ -26,12 +26,14 @@ export default function VFHeader({
       {/* Undo */}
       <button onClick={doUndo} disabled={!canUndo}
         title="Undo"
-        style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+        style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0,
                  border: `1px solid ${canUndo ? T.blue + '55' : T.dim + '33'}`,
                  background: canUndo ? `${T.blue}10` : 'transparent',
                  color: canUndo ? T.blue : T.dim,
-                 fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                 cursor: canUndo ? 'pointer' : 'default', transition: 'all .15s' }}>
+                 fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                 cursor: canUndo ? 'pointer' : 'default', transition: 'all .15s',
+                 touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
+                 userSelect: 'none' }}>
         ↩
       </button>
 
