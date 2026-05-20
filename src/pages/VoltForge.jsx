@@ -30,6 +30,9 @@ export default function VoltForge() {
   const [aiHL, setAiHL] = useState({ compIds: [], type: 'info' });
   const [canUndo, setCanUndo] = useState(false);
 
+  // Rubber-band overlay SVG ref — updated imperatively to avoid re-renders on every mousemove
+  const rbSvgRef = useRef(null);
+
   // ── Zoom / pan state ───────────────────────────────────
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -40,7 +43,6 @@ export default function VoltForge() {
   const drawing = useRef(null);   // { termId, compId } | { rewireId, fixedTermId, dragTermId } for rewire
   const mouse = useRef({ x: 0, y: 0 });
   const snapRef = useRef(null);
-  const [drawVer, setDrawVer] = useState(0);
   const cvRef = useRef(null);
 
   // Long-press tracking
@@ -54,10 +56,45 @@ export default function VoltForge() {
   // Wire SIM onChange → React
   useEffect(() => {
     SIM.onChange = () => setSimSnap(SIM.snap ? { ...SIM.snap } : null);
-    // Push initial empty state so undo can restore to blank canvas
+    // Reset history and push the initial state on mount
+    HIST.clear();
     HIST.push(G, { pid: projId, name: projName });
-    setCanUndo(HIST.canUndo);
+    setCanUndo(false);
     return () => { SIM.onChange = null; SIM.stop(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Imperatively update rubber-band SVG (no React re-render) ──
+  const updateRubberBand = useCallback((drawOriginTerm, mx, my, snapTgt, isRewire, wColorVal) => {
+    const svg = rbSvgRef.current;
+    if (!svg) return;
+    if (!drawOriginTerm) { svg.style.display = 'none'; return; }
+    svg.style.display = 'block';
+
+    const col = snapTgt?.valid ? T.green : snapTgt ? T.red : isRewire ? T.amber : wColorVal;
+    let d;
+    if (snapTgt) {
+      d = bezier(drawOriginTerm.wx, drawOriginTerm.wy, drawOriginTerm.dir,
+                 snapTgt.term.wx, snapTgt.term.wy, snapTgt.term.dir);
+    } else {
+      d = rubber(drawOriginTerm.wx, drawOriginTerm.wy, drawOriginTerm.dir, mx, my);
+    }
+
+    const [glow, line, ring] = svg.children;
+    glow.setAttribute('d', d); glow.setAttribute('stroke', col);
+    line.setAttribute('d', d); line.setAttribute('stroke', col);
+    line.setAttribute('stroke-dasharray', snapTgt?.valid ? 'none' : '8 5');
+    if (snapTgt) {
+      ring.setAttribute('cx', snapTgt.term.wx); ring.setAttribute('cy', snapTgt.term.wy);
+      ring.setAttribute('stroke', col); ring.style.display = 'block';
+    } else {
+      ring.style.display = 'none';
+    }
+  }, []);
+
+  const clearRubberBand = useCallback(() => {
+    const svg = rbSvgRef.current;
+    if (svg) svg.style.display = 'none';
   }, []);
 
   const bump = useCallback(() => {
@@ -135,9 +172,9 @@ export default function VoltForge() {
     }
     // Only handle bare canvas taps (not component/terminal children)
     if (!e.target.dataset.cv) return;
-    if (drawing.current) { drawing.current = null; snapRef.current = null; setDrawVer(v => v + 1); }
+    if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); }
     setSelected(null);
-  }, [placing, eXY, bump]);
+  }, [placing, eXY, bump, clearRubberBand]);
 
   const onCanvasMouseDown = useCallback(e => {
     if (placing) {
@@ -149,9 +186,9 @@ export default function VoltForge() {
       return;
     }
     if (!e.target.dataset.cv) return;
-    if (drawing.current) { drawing.current = null; snapRef.current = null; setDrawVer(v => v + 1); }
+    if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); }
     setSelected(null);
-  }, [placing, eXY, bump]);
+  }, [placing, eXY, bump, clearRubberBand]);
 
   // ── Global move / up ─────────────────────────────────
   const onGlobalMove = useCallback(e => {
@@ -163,7 +200,6 @@ export default function VoltForge() {
       const newZoom = Math.min(4, Math.max(0.25, pinchRef.current.zoom * scale));
       const midX = (a.clientX + b.clientX) / 2;
       const midY = (a.clientY + b.clientY) / 2;
-      // Zoom toward pinch centre
       const r = cvRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
       const cx = pinchRef.current.cx - r.left;
       const cy = pinchRef.current.cy - r.top;
@@ -181,7 +217,6 @@ export default function VoltForge() {
     if (!drawing.current) return;
     const { x, y } = eXY(e);
     mouse.current = { x, y };
-    // For rewire: exclude the fixed terminal's component so we can snap to other components
     const excludeCompId = drawing.current.rewireId
       ? G.terminals.get(drawing.current.fixedTermId)?.compId
       : drawing.current.compId;
@@ -189,9 +224,14 @@ export default function VoltForge() {
       ? drawing.current.fixedTermId
       : drawing.current.termId;
     snapRef.current = G.findSnap(x, y, excludeCompId, excludeTermId, drawing.current.rewireId);
-    setDrawVer(v => v + 1);
+
+    // Update rubber-band imperatively — no React re-render
+    const originTermId = drawing.current.rewireId ? drawing.current.fixedTermId : drawing.current.termId;
+    const originTerm = G.terminals.get(originTermId);
+    updateRubberBand(originTerm, x, y, snapRef.current, !!drawing.current.rewireId, wColor);
+
     if (e.cancelable) e.preventDefault();
-  }, [eXY]);
+  }, [eXY, updateRubberBand, wColor]);
 
   const onGlobalUp = useCallback(e => {
     pinchRef.current = null;
@@ -200,21 +240,19 @@ export default function VoltForge() {
     const snap = snapRef.current;
 
     if (drawing.current.rewireId) {
-      // Wire-end drag: rewire
       if (snap?.valid) {
         G.removeWire(drawing.current.rewireId);
         G.addWire(drawing.current.fixedTermId, snap.term.id, drawing.current.color);
         bump();
       }
     } else {
-      // Normal new wire
       if (snap?.valid) { G.addWire(drawing.current.termId, snap.term.id, wColor); bump(); }
     }
 
     drawing.current = null;
     snapRef.current = null;
-    setDrawVer(v => v + 1);
-  }, [wColor, bump]);
+    clearRubberBand();
+  }, [wColor, bump, clearRubberBand]);
 
   // ── Mouse wheel zoom ──────────────────────────────────
   const onWheel = useCallback(e => {
@@ -253,24 +291,19 @@ export default function VoltForge() {
       clearTimeout(lpTimer.current);
       lpTimer.current = setTimeout(() => {
         lpActive.current = true;
-        // pick the first wire from this terminal
         const wid = [...term.wireIds][0];
         const wire = G.wires.get(wid);
         if (!wire) return;
-        // The "fixed" end is the OTHER terminal, we drag the pressed one
         const fixedTermId = wire.from === termId ? wire.to : wire.from;
         drawing.current = { rewireId: wid, fixedTermId, termId, compId, color: wire.color };
         mouse.current = { x, y };
         snapRef.current = null;
         setSelected(null);
-        setDrawVer(v => v + 1);
       }, 480);
 
-      // Also start normal draw immediately so short tap still works
       drawing.current = { termId, compId };
       mouse.current = { x, y };
       snapRef.current = null;
-      setDrawVer(v => v + 1);
       return;
     }
 
@@ -279,7 +312,6 @@ export default function VoltForge() {
     mouse.current = { x, y };
     snapRef.current = null;
     setSelected(null);
-    setDrawVer(v => v + 1);
   }, [eXY]);
 
   // ── Component press — long-press to show buttons, drag to move ──
@@ -304,21 +336,23 @@ export default function VoltForge() {
       }
     }, 480);
 
+    // Find the component's DOM element for live position update
+    const compEl = cvRef.current?.querySelector(`[data-comp-id="${compId}"]`);
+
     const onM = ev => {
       const c = gXY(ev);
       const dist = Math.hypot(c.x - s0.x, c.y - s0.y);
       if (dist < 6) return;
-      // Cancel long-press if finger moved
       clearTimeout(lpTimer.current);
       moved = true;
       const gs = 20;
-      // Divide screen delta by zoom to get world-space delta
       const dxWorld = (c.x - s0.x) / zoomRef.current;
       const dyWorld = (c.y - s0.y) / zoomRef.current;
-      G.moveComponent(compId,
-        Math.round((ox + dxWorld) / gs) * gs,
-        Math.round((oy + dyWorld) / gs) * gs);
-      setVer(v => v + 1);
+      const nx = Math.round((ox + dxWorld) / gs) * gs;
+      const ny = Math.round((oy + dyWorld) / gs) * gs;
+      G.moveComponent(compId, nx, ny);
+      // Update position imperatively for smooth dragging
+      if (compEl) { compEl.style.left = nx + 'px'; compEl.style.top = ny + 'px'; }
       if (ev.cancelable) ev.preventDefault();
     };
     const onU = () => {
@@ -341,19 +375,6 @@ export default function VoltForge() {
   const snap = simSnap;
 
   const isDrawing = !!drawing.current;
-  const drawOrigin = isDrawing
-    ? G.terminals.get(
-        drawing.current.rewireId
-          ? drawing.current.fixedTermId   // rewire: rubber band starts from fixed end
-          : drawing.current.termId        // normal: rubber band starts from pressed terminal
-      )
-    : null;
-  const snapTarget = snapRef.current;
-  const rubberPath = drawOrigin
-    ? (snapTarget
-      ? bezier(drawOrigin.wx, drawOrigin.wy, drawOrigin.dir, snapTarget.term.wx, snapTarget.term.wy, snapTarget.term.dir)
-      : rubber(drawOrigin.wx, drawOrigin.wy, drawOrigin.dir, mouse.current.x, mouse.current.y))
-    : null;
 
   // Sim controls
   const toggleSim = useCallback(() => {
@@ -404,11 +425,10 @@ export default function VoltForge() {
       <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
         {view === 'canvas' && (
           <CanvasView
-            cvRef={cvRef}
+            cvRef={cvRef} rbSvgRef={rbSvgRef}
             comps={comps} wires={wires}
             placing={placing} isDrawing={isDrawing} selected={selected}
-            drawOrigin={drawOrigin} rubberPath={rubberPath}
-            snapTarget={snapTarget} wColor={wColor} snap={snap}
+            wColor={wColor} snap={snap}
             issuesByComp={issuesByComp} aiHL={aiHL}
             zoom={zoom} pan={pan}
             onCanvasTouchStart={onCanvasTouchStart}

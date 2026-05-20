@@ -4,8 +4,8 @@ import { G } from '@/lib/voltforge/instances';
 import { bezier } from '@/lib/voltforge/routing';
 
 export default function CanvasView({
-  cvRef, comps, wires, placing, isDrawing, selected,
-  drawOrigin, rubberPath, snapTarget, wColor, snap,
+  cvRef, rbSvgRef, comps, wires, placing, isDrawing, selected,
+  wColor, snap,
   issuesByComp, aiHL,
   zoom, pan,
   onCanvasTouchStart, onCanvasMouseDown,
@@ -55,7 +55,7 @@ export default function CanvasView({
         </div>
       )}
 
-      {/* Scrollable canvas surface — receives touch/mouse for placement & deselect */}
+      {/* Canvas surface */}
       <div
         ref={cvRef}
         data-cv="true"
@@ -78,10 +78,10 @@ export default function CanvasView({
           position: 'absolute', top: 0, left: 0,
           transform: `translate(${pan.x}px,${pan.y}px) scale(${zoom})`,
           transformOrigin: '0 0',
-          width: 4000, height: 4000,   // large virtual canvas
+          width: 4000, height: 4000,
         }}>
 
-          {/* SVG wire layer */}
+          {/* SVG wire layer (static wires only) */}
           <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
                         pointerEvents: 'none', zIndex: 5, overflow: 'visible' }}>
             <defs>
@@ -100,7 +100,6 @@ export default function CanvasView({
               const col = act ? (fi > 0.6 ? T.green : fi > 0.3 ? T.cyan : T.blue) : w.color;
               const d = bezier(tA.wx, tA.wy, tA.dir, tB.wx, tB.wy, tB.dir);
               const Va = snap?.termV?.get(w.from);
-              // Is this wire being rewired? highlight it differently
               return (
                 <g key={w.id}>
                   {act && <path d={d} fill="none" stroke={col} strokeWidth={8}
@@ -125,24 +124,13 @@ export default function CanvasView({
               );
             })}
 
-            {/* Rubber band */}
-            {rubberPath && (
-              <>
-                <path d={rubberPath} fill="none"
-                      stroke={snapTarget?.valid ? T.green : snapTarget ? T.red : isRewire ? T.amber : wColor}
-                      strokeWidth={8} strokeLinecap="round" opacity={.14} />
-                <path d={rubberPath} fill="none"
-                      stroke={snapTarget?.valid ? T.green : snapTarget ? T.red : isRewire ? T.amber : wColor}
-                      strokeWidth={2.5} strokeLinecap="round"
-                      strokeDasharray={snapTarget?.valid ? 'none' : '8 5'}
-                      filter={snapTarget ? undefined : 'url(#gl)'} opacity={.9} />
-              </>
-            )}
-            {snapTarget && (
-              <circle cx={snapTarget.term.wx} cy={snapTarget.term.wy} r={10}
-                      fill="none" stroke={snapTarget.valid ? T.green : T.red}
-                      strokeWidth={2} style={{ animation: 'snapRing 1s ease-out infinite' }} />
-            )}
+            {/* Imperative rubber-band overlay (hidden by default, updated via rbSvgRef) */}
+            <g ref={rbSvgRef} style={{ display: 'none', pointerEvents: 'none' }}>
+              <path fill="none" strokeWidth={8} strokeLinecap="round" opacity={.14} />
+              <path fill="none" strokeWidth={2.5} strokeLinecap="round" opacity={.9} />
+              <circle r={10} fill="none" strokeWidth={2}
+                      style={{ animation: 'snapRing 1s ease-out infinite' }} />
+            </g>
           </svg>
 
           {/* Components */}
@@ -165,6 +153,7 @@ export default function CanvasView({
 
             return (
               <div key={comp.id}
+                data-comp-id={comp.id}
                 style={{
                   position: 'absolute', left: comp.x, top: comp.y,
                   width: CW, height: CH, zIndex: isSel ? 20 : 10,
@@ -185,19 +174,16 @@ export default function CanvasView({
                   alignItems: 'center', justifyContent: 'center', gap: 3,
                   overflow: 'hidden', transition: 'border-color .2s, box-shadow .2s',
                 }}>
-                  {/* Colour bar */}
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
                                 background: def.color, opacity: .65, borderRadius: '13px 13px 0 0' }} />
                   <div style={{ position: 'absolute', inset: 0, borderRadius: 13,
                                 background: 'linear-gradient(135deg,rgba(255,255,255,.05),transparent)',
                                 pointerEvents: 'none' }} />
-                  {/* Power bar */}
                   {bh && bh.powerLevel > 0 && (
                     <div style={{ position: 'absolute', bottom: 0, left: 0, height: 3,
                                   width: `${bh.powerLevel * 100}%`, background: STATE_COL[bh.state] ?? T.sub,
                                   borderRadius: '0 0 0 13px', transition: 'width .2s' }} />
                   )}
-                  {/* State badge */}
                   {bh && bh.state !== 'OFF' && (
                     <div style={{
                       position: 'absolute', top: -8, left: '50%',
@@ -218,15 +204,11 @@ export default function CanvasView({
                     {comp.label}
                   </span>
 
-                  {/* Switch toggle button */}
                   {(comp.type === 'switch_' || comp.type === 'pushbtn') && (
                     <button
                       onMouseDown={e => e.stopPropagation()}
                       onTouchStart={e => { e.stopPropagation(); e.preventDefault(); }}
-                      onTouchEnd={e => {
-                        e.stopPropagation(); e.preventDefault();
-                        comp._closed = !comp._closed; bump();
-                      }}
+                      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); comp._closed = !comp._closed; bump(); }}
                       onClick={e => { e.stopPropagation(); comp._closed = !comp._closed; bump(); }}
                       style={{
                         position: 'absolute', bottom: 4, right: 4, width: 16, height: 16,
@@ -237,7 +219,6 @@ export default function CanvasView({
                       {comp._closed ? '●' : '○'}
                     </button>
                   )}
-                  {/* Fuse / Breaker reset */}
                   {((comp.type === 'fuse' && comp._blown) || (comp.type === 'breaker' && comp._tripped)) && (
                     <button
                       onMouseDown={e => e.stopPropagation()}
@@ -258,22 +239,17 @@ export default function CanvasView({
                         position: 'absolute', bottom: 3, right: 3, width: 18, height: 18,
                         borderRadius: 5, border: 'none', fontSize: 11, cursor: 'pointer',
                         background: T.amber, color: '#000', touchAction: 'none', zIndex: 8,
-                      }}>
-                      ↺
-                    </button>
+                      }}>↺</button>
                   )}
                 </div>
 
-                {/* Delete / Rotate — only shown when selected (long-pressed) */}
+                {/* Delete / Rotate buttons (long-press) */}
                 {isSel && (
                   <>
                     <button
                       onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }}
                       onTouchStart={e => { e.stopPropagation(); e.preventDefault(); }}
-                      onTouchEnd={e => {
-                        e.stopPropagation(); e.preventDefault();
-                        G.removeComponent(comp.id); setSelected(null); bump();
-                      }}
+                      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); G.removeComponent(comp.id); setSelected(null); bump(); }}
                       onClick={e => { e.stopPropagation(); G.removeComponent(comp.id); setSelected(null); bump(); }}
                       style={{
                         position: 'absolute', top: -12, right: -12, width: 28, height: 28,
@@ -285,10 +261,7 @@ export default function CanvasView({
                     <button
                       onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }}
                       onTouchStart={e => { e.stopPropagation(); e.preventDefault(); }}
-                      onTouchEnd={e => {
-                        e.stopPropagation(); e.preventDefault();
-                        G.rotateComponent(comp.id); bump();
-                      }}
+                      onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); G.rotateComponent(comp.id); bump(); }}
                       onClick={e => { e.stopPropagation(); G.rotateComponent(comp.id); bump(); }}
                       style={{
                         position: 'absolute', top: -12, left: -12, width: 28, height: 28,
@@ -304,10 +277,9 @@ export default function CanvasView({
                 {comp.termIds.map(tid => {
                   const t = G.terminals.get(tid);
                   if (!t) return null;
-                  const isTgt = snapTarget?.term?.id === tid;
                   const wired = t.wireIds.size > 0;
-                  const tColor = isTgt ? (snapTarget.valid ? T.green : T.red) : wired ? T.blue : T.sub;
-                  const sz = isTgt ? 27 : wired ? 21 : 19;
+                  const tColor = wired ? T.blue : T.sub;
+                  const sz = wired ? 21 : 19;
                   return (
                     <div key={tid}
                       onMouseDown={e => onTermPress(tid, comp.id, e)}
@@ -316,19 +288,18 @@ export default function CanvasView({
                         position: 'absolute', left: t.lp.x - sz / 2, top: t.lp.y - sz / 2,
                         width: sz, height: sz, borderRadius: '50%',
                         border: `2.5px solid ${tColor}`,
-                        background: isTgt ? `${tColor}22` : wired ? `${tColor}18` : T.bg,
+                        background: wired ? `${tColor}18` : T.bg,
                         cursor: 'crosshair', zIndex: 30, touchAction: 'none',
-                        transform: isTgt ? 'scale(1.35)' : 'scale(1)', transition: 'all .12s',
-                        boxShadow: isTgt ? `0 0 10px ${tColor}` : wired ? `0 0 5px ${tColor}66` : 'none',
+                        boxShadow: wired ? `0 0 5px ${tColor}66` : 'none',
                       }} />
                   );
                 })}
               </div>
             );
           })}
-        </div>{/* end transform layer */}
+        </div>
 
-        {/* Wire colour picker — fixed to canvas, outside transform */}
+        {/* Wire colour picker */}
         <div style={{
           position: 'absolute', bottom: 10, right: 10, zIndex: 20,
           display: 'flex', gap: 6, padding: '7px 10px', borderRadius: 20,
