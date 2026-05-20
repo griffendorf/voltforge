@@ -10,7 +10,7 @@ export default function CanvasView({
   zoom, pan,
   onCanvasTouchStart, onCanvasMouseDown,
   onCompPress, onTermPress, setWColor, setSelected, bump,
-  isRewire,
+  isRewire, onWireLongPress,
 }) {
   const simHasErrors = simOn && errors?.length > 0;
   const simRunning = simOn && !simHasErrors;
@@ -85,7 +85,7 @@ export default function CanvasView({
 
           {/* SVG wire layer (static wires only) */}
           <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
-                        pointerEvents: 'none', zIndex: 5, overflow: 'visible' }}>
+                        pointerEvents: 'all', zIndex: 5, overflow: 'visible' }}>
             <defs>
               <filter id="gl">
                 <feGaussianBlur stdDeviation="3" result="b" />
@@ -102,6 +102,35 @@ export default function CanvasView({
               const col = act ? (fi > 0.6 ? T.green : fi > 0.3 ? T.cyan : T.blue) : w.color;
               const d = bezier(tA.wx, tA.wy, tA.dir, tB.wx, tB.wy, tB.dir);
               const Va = snap?.termV?.get(w.from);
+
+              // Long-press rewire
+              let wireLpTimer = null;
+              const startWirePress = (e, isTouch) => {
+                e.stopPropagation();
+                const s = e.touches?.[0] || e.changedTouches?.[0] || e;
+                const clientX = s.clientX, clientY = s.clientY;
+                const r = cvRef.current?.getBoundingClientRect() || { left: 0, top: 0 };
+                const wx = (clientX - r.left - pan.x) / zoom;
+                const wy = (clientY - r.top - pan.y) / zoom;
+                // Pick which terminal is closer to press point
+                const dA = Math.hypot(wx - tA.wx, wy - tA.wy);
+                const dB = Math.hypot(wx - tB.wx, wy - tB.wy);
+                const [nearTerm, farTerm] = dA < dB ? [tA, tB] : [tB, tA];
+                wireLpTimer = setTimeout(() => {
+                  wireLpTimer = null;
+                  onWireLongPress(w.id, farTerm.id, nearTerm.id, w.color, wx, wy);
+                }, 420);
+                const cancel = () => {
+                  if (wireLpTimer) {
+                    clearTimeout(wireLpTimer);
+                    wireLpTimer = null;
+                    G.removeWire(w.id); bump();
+                  }
+                  window.removeEventListener(isTouch ? 'touchend' : 'mouseup', cancel);
+                };
+                window.addEventListener(isTouch ? 'touchend' : 'mouseup', cancel);
+              };
+
               return (
                 <g key={w.id}>
                   {act && <path d={d} fill="none" stroke={col} strokeWidth={8}
@@ -113,8 +142,13 @@ export default function CanvasView({
                           animation: act ? `wireFlow ${Math.max(0.3, 1.4 - fi).toFixed(2)}s linear infinite` : undefined,
                           cursor: 'pointer', pointerEvents: 'stroke',
                         }}
-                        onMouseDown={e => { e.stopPropagation(); G.removeWire(w.id); bump(); }}
-                        onTouchStart={e => { e.stopPropagation(); G.removeWire(w.id); bump(); }} />
+                        onMouseDown={e => startWirePress(e, false)}
+                        onTouchStart={e => startWirePress(e, true)} />
+                  {/* Wide invisible hit area */}
+                  <path d={d} fill="none" stroke="transparent" strokeWidth={18}
+                        style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
+                        onMouseDown={e => startWirePress(e, false)}
+                        onTouchStart={e => startWirePress(e, true)} />
                   {Va != null && act && (
                     <text x={(tA.wx + tB.wx) / 2} y={(tA.wy + tB.wy) / 2 - 8}
                           fill={col} fontSize={7} textAnchor="middle" opacity={.85}

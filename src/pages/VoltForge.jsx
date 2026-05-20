@@ -410,6 +410,12 @@ export default function VoltForge() {
 
   const isDrawing = !!drawing.current;
 
+  const onWireLongPress = useCallback((wireId, fixedTermId, dragTermId, color, startX, startY) => {
+    drawing.current = { rewireId: wireId, fixedTermId, dragTermId, color };
+    mouse.current = { x: startX, y: startY };
+    snapRef.current = null;
+  }, []);
+
   // Sim controls
   const toggleSim = useCallback(() => {
     if (simOn) { SIM.stop(); setSimOn(false); setSimPaused(false); setSimSnap(null); }
@@ -468,6 +474,7 @@ export default function VoltForge() {
             onCanvasTouchStart={onCanvasTouchStart}
             onCanvasMouseDown={onCanvasMouseDown}
             onCompPress={onCompPress}
+            onWireLongPress={onWireLongPress}
             onTermPress={onTermPress}
             setWColor={setWColor}
             setSelected={setSelected}
