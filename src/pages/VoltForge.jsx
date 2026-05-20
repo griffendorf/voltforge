@@ -54,6 +54,9 @@ export default function VoltForge() {
   // Wire SIM onChange → React
   useEffect(() => {
     SIM.onChange = () => setSimSnap(SIM.snap ? { ...SIM.snap } : null);
+    // Push initial empty state so undo can restore to blank canvas
+    HIST.push(G, { pid: projId, name: projName });
+    setCanUndo(HIST.canUndo);
     return () => { SIM.onChange = null; SIM.stop(); };
   }, []);
 
