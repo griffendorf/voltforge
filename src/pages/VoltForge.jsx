@@ -316,20 +316,42 @@ export default function VoltForge() {
     };
   }, []);
 
-  // ── Terminal press — branch new wire on tap, long-press to rewire existing ──
+  // ── Terminal press — AutoSnap tap-to-tap OR drag-to-wire ──
   const onTermPress = useCallback((termId, compId, e) => {
-    if (placing) return; // let event bubble to canvas for placement
+    if (placing) return;
     e.stopPropagation(); e.preventDefault();
     const { x, y } = eXY(e);
     const term = G.terminals.get(termId);
     const isTouch = !!e.touches;
-    const hasWires = term && term.wireIds.size > 0;
 
+    // — AutoSnap tap-to-tap mode —
+    if (autoSnapRef.current) {
+      // Second tap: complete the wire
+      if (drawing.current && !drawing.current.rewireId && termId !== drawing.current.termId) {
+        G.addWire(drawing.current.termId, termId, wColor);
+        bump();
+        // Stay in drawing mode from this terminal for chaining
+        drawing.current = { termId, compId };
+        mouse.current = { x, y };
+        snapRef.current = null;
+        clearRubberBand();
+        setSelected(null);
+        return;
+      }
+      // First tap: set origin
+      drawing.current = { termId, compId };
+      mouse.current = { x, y };
+      snapRef.current = null;
+      setSelected(null);
+      return;
+    }
+
+    // — Normal drag-to-wire mode —
+    const hasWires = term && term.wireIds.size > 0;
     lpActive.current = false;
     clearTimeout(lpTimer.current);
 
     if (hasWires) {
-      // Long-press → rewire the existing wire's end
       lpTimer.current = setTimeout(() => {
         lpActive.current = true;
         const wid = [...term.wireIds][0];
@@ -341,31 +363,22 @@ export default function VoltForge() {
         snapRef.current = null;
         setSelected(null);
       }, 480);
-
-      // Short tap/click → branch a new wire from this terminal
-      // We set up the drawing state immediately; if long-press fires it will override
       drawing.current = { termId, compId };
       mouse.current = { x, y };
       snapRef.current = null;
       setSelected(null);
-
       if (!isTouch) {
-        // For mouse: cancel rewire mode on mouseup before long-press fires
-        const cancelRewire = () => {
-          clearTimeout(lpTimer.current);
-          window.removeEventListener('mouseup', cancelRewire);
-        };
+        const cancelRewire = () => { clearTimeout(lpTimer.current); window.removeEventListener('mouseup', cancelRewire); };
         window.addEventListener('mouseup', cancelRewire);
       }
       return;
     }
 
-    // No existing wire — start fresh wire
     drawing.current = { termId, compId };
     mouse.current = { x, y };
     snapRef.current = null;
     setSelected(null);
-  }, [eXY, placing]);
+  }, [eXY, placing, wColor, bump, clearRubberBand]);
 
   // ── Component press — long-press to show buttons, drag to move ──
   const onCompPress = useCallback((compId, e) => {

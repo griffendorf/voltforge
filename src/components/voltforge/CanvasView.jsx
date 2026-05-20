@@ -324,22 +324,42 @@ export default function CanvasView({
           })}
         </div>
 
-        {/* Wire colour picker */}
-        <div style={{
-          position: 'absolute', bottom: 10, right: 10, zIndex: 20,
-          display: 'flex', gap: 6, padding: '7px 10px', borderRadius: 20,
-          background: 'rgba(7,16,28,.92)', border: `1px solid ${T.b1}`,
-        }}>
-          {[T.blue, T.cyan, T.green, T.amber, T.red, T.purple].map(c => (
-            <div key={c} onClick={() => setWColor(c)}
-              style={{
-                width: 18, height: 18, borderRadius: '50%', background: c, cursor: 'pointer',
-                border: `2.5px solid ${wColor === c ? '#fff' : 'transparent'}`,
-                transform: wColor === c ? 'scale(1.25)' : 'scale(1)', transition: 'all .15s',
-                boxShadow: wColor === c ? `0 0 7px ${c}` : 'none',
-              }} />
-          ))}
-        </div>
+        {/* Wire line-type picker */}
+        {(() => {
+          const types = [
+            { label: 'Signal',  color: T.blue   },
+            { label: 'Data',    color: T.cyan   },
+            { label: 'Power',   color: T.amber  },
+            { label: 'Ground',  color: T.green  },
+            { label: 'Fault',   color: T.red    },
+            { label: 'Bus',     color: T.purple },
+          ];
+          const cur = types.find(t => t.color === wColor) || types[0];
+          return (
+            <div style={{
+              position: 'absolute', bottom: 10, right: 10, zIndex: 20,
+            }}>
+              <select
+                value={cur.color}
+                onChange={e => setWColor(e.target.value)}
+                style={{
+                  height: 32, padding: '0 28px 0 10px', borderRadius: 10,
+                  background: 'rgba(7,16,28,.95)', border: `1.5px solid ${cur.color}66`,
+                  color: cur.color, fontSize: 9, fontFamily: "'JetBrains Mono',monospace",
+                  fontWeight: 700, cursor: 'pointer', outline: 'none',
+                  appearance: 'none', WebkitAppearance: 'none',
+                  boxShadow: `0 0 8px ${cur.color}33`,
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
+                  minWidth: 90,
+                }}>
+                {types.map(t => (
+                  <option key={t.color} value={t.color}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
