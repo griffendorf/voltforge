@@ -108,7 +108,7 @@ export default function SaveView({ projName, setProjName, projId, setProjId, bum
           style={{ width:'100%', padding:'10px', borderRadius:9, marginBottom:8,
                    border:`1px solid ${T.red}44`, background:`${T.red}0a`,
                    color:T.red, fontSize:10, fontWeight:700 }}>
-          ✦ New File
+          ✕ Close File
         </button>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={doSave}

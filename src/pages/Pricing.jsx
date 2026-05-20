@@ -56,10 +56,10 @@ export default function Pricing() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#040709', color: '#c8e8f0',
+      height: '100vh', background: '#040709', color: '#c8e8f0',
       fontFamily: "'JetBrains Mono', monospace",
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: '40px 20px',
+      overflowY: 'auto', padding: '20px 12px 28px',
     }}>
       {/* Back */}
       <div style={{ width: '100%', maxWidth: 900, marginBottom: 32 }}>
@@ -67,16 +67,16 @@ export default function Pricing() {
       </div>
 
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 48 }}>
+      <div style={{ textAlign: 'center', marginBottom: 20 }}>
         <div style={{
-          fontFamily: "'Orbitron', sans-serif", fontSize: 28, fontWeight: 700,
+          fontFamily: "'Orbitron', sans-serif", fontSize: 20, fontWeight: 700,
           background: 'linear-gradient(90deg,#00d4ff,#39ff7a)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           marginBottom: 10,
         }}>
           VoltForge Plans
         </div>
-        <div style={{ color: '#5a8a9a', fontSize: 12 }}>
+        <div style={{ color: '#5a8a9a', fontSize: 10 }}>
           Choose the plan that powers your circuits
         </div>
         {!loading && tier !== 'free' && (
@@ -91,7 +91,7 @@ export default function Pricing() {
 
       {/* Cards */}
       <div style={{
-        display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center',
+        display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center',
         width: '100%', maxWidth: 900,
       }}>
         {PLANS.map(plan => {
@@ -99,10 +99,10 @@ export default function Pricing() {
           const isUpgrading = upgrading === plan.id;
           return (
             <div key={plan.id} style={{
-              flex: '1 1 240px', maxWidth: 280,
+              flex: '1 1 200px', maxWidth: 260,
               background: plan.id === 'pro' ? 'linear-gradient(135deg,#061520,#091e2e)' : '#07101c',
               border: `1.5px solid ${isCurrent ? plan.color : plan.color + '33'}`,
-              borderRadius: 16, padding: 28, position: 'relative',
+              borderRadius: 14, padding: '18px 16px', position: 'relative',
               boxShadow: isCurrent ? `0 0 20px ${plan.color}44` : plan.id === 'pro' ? `0 0 14px #00d4ff22` : 'none',
               transition: 'box-shadow .2s',
             }}>
@@ -130,17 +130,17 @@ export default function Pricing() {
                 </div>
               )}
 
-              <div style={{ fontSize: 13, fontWeight: 700, color: plan.color, marginBottom: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: plan.color, marginBottom: 4 }}>
                 {plan.name}
               </div>
-              <div style={{ marginBottom: 20 }}>
-                <span style={{ fontSize: 26, fontWeight: 700, color: '#e8f4f8' }}>{plan.price}</span>
-                <span style={{ fontSize: 10, color: '#5a8a9a' }}>{plan.period}</span>
+              <div style={{ marginBottom: 14 }}>
+                <span style={{ fontSize: 20, fontWeight: 700, color: '#e8f4f8' }}>{plan.price}</span>
+                <span style={{ fontSize: 9, color: '#5a8a9a' }}>{plan.period}</span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
                 {plan.features.map(f => (
-                  <div key={f} style={{ fontSize: 10, color: '#9ab8c8', display: 'flex', gap: 8 }}>
+                  <div key={f} style={{ fontSize: 9, color: '#9ab8c8', display: 'flex', gap: 6 }}>
                     <span style={{ color: plan.color }}>✓</span> {f}
                   </div>
                 ))}
