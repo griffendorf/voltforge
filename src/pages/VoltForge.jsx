@@ -279,6 +279,26 @@ export default function VoltForge() {
     return () => el.removeEventListener('wheel', onWheel);
   }, [onWheel, view]); // re-attach when view changes (cvRef may remount)
 
+  // ── Native window listeners for move/up (passive:false for touch) ──
+  const globalMoveRef = useRef(null);
+  const globalUpRef = useRef(null);
+  useEffect(() => { globalMoveRef.current = onGlobalMove; }, [onGlobalMove]);
+  useEffect(() => { globalUpRef.current = onGlobalUp; }, [onGlobalUp]);
+  useEffect(() => {
+    const move = e => globalMoveRef.current?.(e);
+    const up = e => globalUpRef.current?.(e);
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', up, { passive: false });
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    return () => {
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', up);
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+  }, []);
+
   // ── Terminal press — branch new wire on tap, long-press to rewire existing ──
   const onTermPress = useCallback((termId, compId, e) => {
     if (placing) return; // let event bubble to canvas for placement
@@ -439,8 +459,6 @@ export default function VoltForge() {
 
       <div
         style={{ flex: 1, overflow: 'hidden', position: 'relative', touchAction: 'none' }}
-        onMouseMove={onGlobalMove} onTouchMove={onGlobalMove}
-        onMouseUp={onGlobalUp} onTouchEnd={onGlobalUp}
       >
         {view === 'canvas' && (
           <CanvasView
