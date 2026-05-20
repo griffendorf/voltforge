@@ -1,0 +1,44 @@
+{
+  "name": "Subscription",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "title": "User Email"
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "free",
+        "pro",
+        "premium"
+      ],
+      "title": "Tier",
+      "default": "free"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "cancelled",
+        "expired"
+      ],
+      "title": "Status",
+      "default": "active"
+    },
+    "payment_id": {
+      "type": "string",
+      "title": "Payment ID"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Expires At"
+    }
+  },
+  "required": [
+    "user_email",
+    "tier",
+    "status"
+  ]
+}
