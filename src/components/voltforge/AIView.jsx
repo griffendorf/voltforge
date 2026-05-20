@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { T } from '@/lib/voltforge/theme';
 import { G } from '@/lib/voltforge/instances';
 import { buildAIContext } from '@/lib/voltforge/ai-context';
+import { DEFS } from '@/lib/voltforge/definitions';
 import { base44 } from '@/api/base44Client';
 import PullToRefresh from '@/components/voltforge/PullToRefresh';
 
@@ -11,10 +12,10 @@ const mdRender = text =>
       .replace(/`([^`]+)`/g,'<code style="background:rgba(0,212,255,.12);padding:0 3px;border-radius:3px">$1</code>')
       .replace(/\n/g,'<br/>');
 
-export default function AIView({ snap, setAiHL, setView }) {
+export default function AIView({ snap, setAiHL, setView, bump }) {
   const [msgs, setMsgs] = useState([{
     role:'assistant',
-    content:"👋 I'm **Volt·AI**! Build a circuit, run the sim, then ask me anything — I can see your live graph and measurements.",
+    content:"👋 I'm **Volt·AI**! I can analyze your circuit OR build one for you! Just describe what you need (e.g., 'Add a battery and LED with a resistor'), and I'll place components and connect wires automatically.",
   }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,10 +33,18 @@ export default function AIView({ snap, setAiHL, setView }) {
 
     const context = buildAIContext(G, snap);
     const compIds = [...G.components.values()].map(c => `${c.id}=${c.label}`).join(', ');
+    const allDefs = Object.keys(DEFS).join(', ');
 
     const prompt = `You are Volt·AI, an expert electrical circuit assistant inside VoltForge.
 You can see the user's live circuit data. Be concise (mobile screen). Use **bold** for component names.
-Optionally append ONE highlight block: <hl>{"compIds":["id1","id2"],"type":"info"}</hl>
+
+IMPORTANT: If the user asks you to BUILD or ADD components, respond with a JSON command block:
+<build>{"action":"build","components":[{"type":"battery_9v","x":100,"y":100,"rotation":0},{"type":"led","x":200,"y":100,"rotation":0}],"wires":[{"from":"battery_9v:pos","to":"led:anode"},{"from":"led:cathode","to":"battery_9v:neg"}]}</build>
+
+Component types available: ${allDefs}
+Terminal naming: use "type:terminal_key" (e.g., "battery_9v:pos", "led:anode", "resistor:1", "resistor:2")
+
+For analysis questions, optionally append ONE highlight block: <hl>{"compIds":["id1","id2"],"type":"info"}</hl>
 type can be: info | warning | error | success
 
 Component IDs available: ${compIds || 'none yet'}
@@ -53,11 +62,59 @@ USER QUESTION: ${text}`;
       
       const raw = typeof response === 'string' ? response : JSON.stringify(response);
 
+      // Check for build command
+      const buildMatch = raw.match(/<build>([\s\S]*?)<\/build>/);
+      if (buildMatch) {
+        try {
+          const buildCmd = JSON.parse(buildMatch[1]);
+          if (buildCmd.action === 'build') {
+            // Place components
+            const placedComps = new Map();
+            buildCmd.components.forEach(compSpec => {
+              const comp = G.addComponent(compSpec.type, compSpec.x, compSpec.y);
+              if (comp) {
+                if (compSpec.rotation) {
+                  for (let i = 0; i < compSpec.rotation / 90; i++) {
+                    G.rotateComponent(comp.id);
+                  }
+                }
+                placedComps.set(compSpec.type, comp);
+              }
+            });
+
+            // Connect wires
+            if (buildCmd.wires) {
+              buildCmd.wires.forEach(wireSpec => {
+                const [fromType, fromTerm] = wireSpec.from.split(':');
+                const [toType, toTerm] = wireSpec.to.split(':');
+                const fromComp = placedComps.get(fromType);
+                const toComp = placedComps.get(toType);
+                if (fromComp && toComp) {
+                  const fromTermObj = fromComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === fromTerm);
+                  const toTermObj = toComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === toTerm);
+                  if (fromTermObj && toTermObj) {
+                    G.addWire(fromTermObj.id, toTermObj.id, T.blue);
+                  }
+                }
+              });
+            }
+
+            bump();
+            const responseText = raw.replace(/<build>[\s\S]*?<\/build>/g, '').trim();
+            setMsgs(m => [...m, { role:'assistant', content:responseText || '✓ Circuit built successfully!' }]);
+            setView('canvas');
+            return;
+          }
+        } catch (e) {
+          console.error('Build command failed:', e);
+        }
+      }
+
       const hlMatch = raw.match(/<hl>([\s\S]*?)<\/hl>/);
       let hl = null;
       try { if (hlMatch) hl = JSON.parse(hlMatch[1]); } catch {}
 
-      const clean = raw.replace(/<hl>[\s\S]*?<\/hl>/g, '').trim();
+      const clean = raw.replace(/<hl>[\s\S]*?<\/hl>/g, '').replace(/<build>[\s\S]*?<\/build>/g, '').trim();
       setMsgs(m => [...m, { role:'assistant', content:clean, hl }]);
 
       if (hl?.compIds?.length) {

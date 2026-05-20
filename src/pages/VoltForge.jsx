@@ -505,7 +505,7 @@ export default function VoltForge() {
               />
             )}
             {currentView === 'ai' && (
-              <AIView snap={snap} setAiHL={setAiHL} setView={setView} />
+              <AIView snap={snap} setAiHL={setAiHL} setView={setView} bump={bump} />
             )}
             {currentView === 'save' && (
               <SaveView
