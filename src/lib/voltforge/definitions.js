@@ -147,6 +147,58 @@ export const DEFS = {
     terms:[{key:'t1',label:'1', lp:{x:0,y:36}, dir:'left',  pol:'neutral'},
            {key:'t2',label:'2', lp:{x:72,y:36},dir:'right', pol:'neutral'}]},
 
+  // ── AC COMPONENTS
+  transformer:{ label:'Transformer', emoji:'⇌', color:'#ff9800',
+    _role:'passive', _ratio:1, _maxVA:50,
+    terms:[{key:'p1',label:'P+', lp:{x:0,y:18}, dir:'left',  pol:'neutral'},
+           {key:'p2',label:'P−', lp:{x:0,y:54}, dir:'left',  pol:'neutral'},
+           {key:'s1',label:'S+', lp:{x:72,y:18},dir:'right', pol:'neutral'},
+           {key:'s2',label:'S−', lp:{x:72,y:54},dir:'right', pol:'neutral'}]},
+
+  triac:     { label:'TRIAC',      emoji:'⬡', color:'#ff7043',
+    _role:'transistor', _vth:1.0, _on:false,
+    terms:[{key:'a1',  label:'A1', lp:{x:0,y:18},  dir:'left',   pol:'neutral'},
+           {key:'a2',  label:'A2', lp:{x:0,y:54},  dir:'left',   pol:'neutral'},
+           {key:'gate',label:'G',  lp:{x:72,y:36}, dir:'right',  pol:'gate'}]},
+
+  bridge_rect:{ label:'Bridge Rect',emoji:'⟁', color:'#ef5350',
+    _role:'passive', _fwdV:0.7,
+    terms:[{key:'ac1',label:'AC~', lp:{x:0,y:18},  dir:'left',  pol:'neutral'},
+           {key:'ac2',label:'AC~', lp:{x:0,y:54},  dir:'left',  pol:'neutral'},
+           {key:'pos',label:'DC+', lp:{x:72,y:18}, dir:'right', pol:'neutral'},
+           {key:'neg',label:'DC−', lp:{x:72,y:54}, dir:'right', pol:'neutral'}]},
+
+  scr:       { label:'SCR',        emoji:'▷|', color:'#e53935',
+    _role:'transistor', _vth:1.2, _on:false,
+    terms:[{key:'an', label:'A',  lp:{x:0,y:36},  dir:'left',   pol:'neutral'},
+           {key:'ca', label:'K',  lp:{x:72,y:36}, dir:'right',  pol:'neutral'},
+           {key:'gate',label:'G', lp:{x:36,y:0},  dir:'top',    pol:'gate'}]},
+
+  // ── DC POWER
+  dc_source: { label:'DC Adj.',    emoji:'⎍', color:T.amber,
+    _role:'source', _voltage:5, _iR:0.1, _maxI:3,
+    terms:[{key:'pos',label:'+', lp:{x:36,y:0}, dir:'top',    pol:'source'},
+           {key:'neg',label:'−', lp:{x:36,y:72},dir:'bottom', pol:'sink'  }]},
+
+  current_src:{ label:'I Source',  emoji:'⊙', color:'#ffa726',
+    _role:'source', _voltage:0, _current:0.1, _iR:100000,
+    terms:[{key:'pos',label:'I+', lp:{x:36,y:0}, dir:'top',    pol:'source'},
+           {key:'neg',label:'I−', lp:{x:36,y:72},dir:'bottom', pol:'sink'  }]},
+
+  voltage_reg:{ label:'Volt Reg',  emoji:'▣', color:'#26c6da',
+    _role:'passive', _ohms:0.5, _dropout:1.5,
+    terms:[{key:'in', label:'IN',  lp:{x:0,y:36}, dir:'left',  pol:'neutral'},
+           {key:'gnd',label:'GND', lp:{x:36,y:72},dir:'bottom',pol:'neutral'},
+           {key:'out',label:'OUT', lp:{x:72,y:36},dir:'right', pol:'neutral'}]},
+
+  opamp:     { label:'Op-Amp',     emoji:'△', color:'#7e57c2',
+    _role:'passive', _gain:100000,
+    terms:[{key:'inp',label:'IN+', lp:{x:0,y:18},  dir:'left',  pol:'neutral'},
+           {key:'inn',label:'IN−', lp:{x:0,y:54},  dir:'left',  pol:'neutral'},
+           {key:'vcc',label:'V+',  lp:{x:36,y:0},  dir:'top',   pol:'neutral'},
+           {key:'vee',label:'V−',  lp:{x:36,y:72}, dir:'bottom',pol:'neutral'},
+           {key:'out',label:'OUT', lp:{x:72,y:36}, dir:'right', pol:'neutral'}]},
+
   // ── MEASUREMENT
   voltmeter: { label:'Voltmeter',  emoji:'V̲', color:'#42a5f5',
     _role:'meter', _ohms:1000000,
@@ -179,9 +231,10 @@ export const DEFS = {
 
 // Palette categories
 export const CATEGORIES = [
-  { id:'sources',      label:'Sources',       types:['battery','solar','acsource'] },
+  { id:'sources',      label:'DC Sources',    types:['battery','solar','dc_source','current_src'] },
+  { id:'ac',           label:'AC',            types:['acsource','transformer','triac','bridge_rect','scr'] },
   { id:'passive',      label:'Passive',       types:['resistor','potmeter','capacitor','inductor','thermistor','ldr'] },
-  { id:'semi',         label:'Semicon',       types:['led','diode','zener','npn','pnp','mosfet'] },
+  { id:'semi',         label:'Semicon',       types:['led','diode','zener','npn','pnp','mosfet','opamp','voltage_reg'] },
   { id:'loads',        label:'Loads',         types:['motor','bulb','buzzer','speaker','heater'] },
   { id:'switches',     label:'Switches',      types:['switch_','pushbtn','relay'] },
   { id:'protection',   label:'Protection',    types:['fuse','breaker','varistor'] },

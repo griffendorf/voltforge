@@ -513,7 +513,7 @@ export default function VoltForge() {
             projName={projName} setProjName={setProjName}
             projId={projId} setProjId={setProjId}
             bump={bump} setSimOn={setSimOn} setSimSnap={setSimSnap}
-            setVer={setVer}
+            setVer={setVer} setView={setView} setSelected={setSelected}
           />
         )}
       </div>

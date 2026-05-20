@@ -3,7 +3,7 @@ import { T } from '@/lib/voltforge/theme';
 import { uid } from '@/lib/voltforge/graph';
 import { G, STORE, HIST, SIM } from '@/lib/voltforge/instances';
 
-export default function SaveView({ projName, setProjName, projId, setProjId, bump, setSimOn, setSimSnap, setVer }) {
+export default function SaveView({ projName, setProjName, projId, setProjId, bump, setSimOn, setSimSnap, setVer, setView, setSelected }) {
   const [savedList, setSavedList] = useState(() => STORE.list());
   const [saveMsg, setSaveMsg] = useState(null);
   const fileRef = useRef(null);
@@ -36,6 +36,19 @@ export default function SaveView({ projName, setProjName, projId, setProjId, bum
     setSavedList(STORE.list());
     flashMsg(`🗑 "${name}" deleted`);
   }, [flashMsg]);
+
+  const doNew = useCallback(() => {
+    [...G.components.keys()].forEach(id => G.removeComponent(id));
+    const newId = uid('p');
+    setProjId(newId);
+    setProjName('Untitled');
+    HIST.clear();
+    SIM.stop(); setSimOn(false); setSimSnap(null);
+    setVer(v => v + 1);
+    if (setSelected) setSelected(null);
+    if (setView) setView('canvas');
+    flashMsg('✦ New file created');
+  }, [setProjId, setProjName, setSimOn, setSimSnap, setVer, setView, setSelected, flashMsg]);
 
   const doExport = useCallback(() => {
     STORE.export(G, { pid: projId, name: projName });
@@ -91,6 +104,12 @@ export default function SaveView({ projName, setProjName, projId, setProjId, bum
                    border:`1px solid ${T.b2}`, background:T.bg, color:T.text,
                    fontSize:11, outline:'none', fontFamily:'JetBrains Mono, monospace',
                    marginBottom:10 }}/>
+        <button onClick={doNew}
+          style={{ width:'100%', padding:'10px', borderRadius:9, marginBottom:8,
+                   border:`1px solid ${T.red}44`, background:`${T.red}0a`,
+                   color:T.red, fontSize:10, fontWeight:700 }}>
+          ✦ New File
+        </button>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={doSave}
             style={{ flex:1, padding:'10px', borderRadius:9, border:'none',
