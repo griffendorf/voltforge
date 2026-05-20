@@ -246,14 +246,13 @@ export default function CanvasView({
                                   width: `${bh.powerLevel * 100}%`, background: STATE_COL[bh.state] ?? T.sub,
                                   borderRadius: '0 0 0 13px', transition: 'width .2s' }} />
                   )}
-                  {bh && bh.state !== 'OFF' && (
+                  {bh && bh.state !== 'OFF' && bh.state !== 'FAULT' && (
                     <div style={{
                       position: 'absolute', top: -8, left: '50%',
                       transform: 'translateX(-50%)', padding: '1px 6px',
                       borderRadius: 5, fontSize: 7, fontWeight: 700,
                       background: STATE_COL[bh.state] ?? T.sub, color: '#000',
                       whiteSpace: 'nowrap', zIndex: 6,
-                      animation: bh.state === 'FAULT' ? 'stateBlink .6s ease-in-out infinite' : 'none',
                     }}>
                       {bh.state}
                     </div>
