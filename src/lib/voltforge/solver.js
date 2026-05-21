@@ -118,29 +118,34 @@ function findAllPaths(graph, startTid, endTid, depth, visited, visitedComps) {
   const comp = graph.components.get(term.compId);
 
   const results = [];
+  // track visitedComps after processing current component (for wire traversal below)
+  let vcForWires = new Set(visitedComps);
 
   if (comp && comp._role !== 'source' && !visitedComps.has(comp.id)) {
     const exitTid = getExitTerm(comp, startTid);
     if (exitTid !== undefined) {
+      // switch types: only route through designated terminal pair, no wire bypass
       if (exitTid !== null) {
         const vc = new Set(visitedComps); vc.add(comp.id);
         findAllPaths(graph, exitTid, endTid, depth+1, new Set(vis), vc)
           .forEach(res => results.push({ steps:[{ kind:'c', id:comp.id, R:0.05, entryTid:startTid }, ...res.steps], R:0.05+res.R }));
       }
-      return results; // don't fall through for switch types
+      return results; // switches don't allow wire bypass
     } else {
       const r = compR(comp);
-      if (r === Infinity) return [];
-      const vc = new Set(visitedComps); vc.add(comp.id);
-      for (const otid of comp.termIds) {
-        if (otid === startTid) continue;
-        findAllPaths(graph, otid, endTid, depth+1, new Set(vis), vc)
-          .forEach(res => results.push({ steps:[{ kind:'c', id:comp.id, R:r, entryTid:startTid }, ...res.steps], R:r+res.R }));
+      if (r < Infinity) {
+        vcForWires = new Set(visitedComps); vcForWires.add(comp.id);
+        for (const otid of comp.termIds) {
+          if (otid === startTid) continue;
+          findAllPaths(graph, otid, endTid, depth+1, new Set(vis), vcForWires)
+            .forEach(res => results.push({ steps:[{ kind:'c', id:comp.id, R:r, entryTid:startTid }, ...res.steps], R:r+res.R }));
+        }
       }
-      return results;
+      // fall through to wire traversal — needed for daisy-chain parallel wiring
     }
   }
 
+  // Traverse wires from this terminal (handles shared bus wires in parallel circuits)
   for (const wid of term.wireIds) {
     const w = graph.wires.get(wid);
     if (!w) continue;
@@ -149,7 +154,7 @@ function findAllPaths(graph, startTid, endTid, depth, visited, visitedComps) {
     if (!nextT) continue;
     const nextComp = graph.components.get(nextT.compId);
     if (nextComp?._role === 'source' && nextTid !== endTid) continue;
-    findAllPaths(graph, nextTid, endTid, depth+1, new Set(vis), new Set(visitedComps))
+    findAllPaths(graph, nextTid, endTid, depth+1, new Set(vis), new Set(vcForWires))
       .forEach(res => results.push({ steps:[{ kind:'w', wid }, ...res.steps], R:res.R }));
   }
   return results;
