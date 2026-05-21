@@ -15,6 +15,8 @@ function compR(comp) {
     case 'diode': case 'zener': return 10;
     case 'switch_': case 'pushbtn':
       return comp._closed ? 0.05 : Infinity;
+    case 'spdt': case 'dpdt':
+      return 0.05;
     case 'relay':
       return comp._energized ? 0.1 : Infinity;
     case 'npn': case 'pnp': case 'mosfet':
@@ -36,6 +38,28 @@ function compR(comp) {
   }
 }
 
+// For multi-throw switches: returns exit terminal id, null if switch is open, undefined if not applicable
+function getExitTerm(comp, entryTid) {
+  if (comp.type === 'dpdt') {
+    const [c1, c2, f1, f2, r1, r2] = comp.termIds;
+    const pos = comp._position ?? 'off';
+    const pairs = pos === 'fwd' ? [[c1,f1],[c2,f2]] : pos === 'rev' ? [[c1,r1],[c2,r2]] : [];
+    for (const [a, b] of pairs) {
+      if (entryTid === a) return b;
+      if (entryTid === b) return a;
+    }
+    return null; // open
+  }
+  if (comp.type === 'spdt') {
+    const [com, no, nc] = comp.termIds;
+    const pos = comp._position ?? 'no';
+    if (pos === 'no') { if (entryTid === com) return no; if (entryTid === no) return com; }
+    if (pos === 'nc') { if (entryTid === com) return nc; if (entryTid === nc) return com; }
+    return null; // open
+  }
+  return undefined; // not a multi-throw switch
+}
+
 function findPath(graph, startTid, endTid, depth, visited, visitedComps) {
   if (depth > 80 || visited.has(startTid)) return null;
   if (startTid === endTid && depth > 0) return { steps:[], R:0 };
@@ -46,16 +70,27 @@ function findPath(graph, startTid, endTid, depth, visited, visitedComps) {
   const comp = graph.components.get(term.compId);
 
   if (comp && comp._role !== 'source' && !visitedComps.has(comp.id)) {
-    const r = compR(comp);
-    if (r < Infinity) {
-      visitedComps.add(comp.id);
-      for (const otid of comp.termIds) {
-        if (otid === startTid) continue;
-        const res = findPath(graph, otid, endTid, depth+1, new Set(visited), new Set(visitedComps));
-        if (res) return { steps:[{ kind:'c', id:comp.id, R:r }, ...res.steps], R:r+res.R };
+    const exitTid = getExitTerm(comp, startTid);
+    if (exitTid !== undefined) {
+      // multi-throw switch — only route through the designated terminal pair
+      if (exitTid !== null) {
+        visitedComps.add(comp.id);
+        const res = findPath(graph, exitTid, endTid, depth+1, new Set(visited), new Set(visitedComps));
+        if (res) return { steps:[{ kind:'c', id:comp.id, R:0.05 }, ...res.steps], R:0.05+res.R };
       }
+      // switch is open or no path via exit — fall through to wire traversal from current terminal
+    } else {
+      const r = compR(comp);
+      if (r < Infinity) {
+        visitedComps.add(comp.id);
+        for (const otid of comp.termIds) {
+          if (otid === startTid) continue;
+          const res = findPath(graph, otid, endTid, depth+1, new Set(visited), new Set(visitedComps));
+          if (res) return { steps:[{ kind:'c', id:comp.id, R:r }, ...res.steps], R:r+res.R };
+        }
+      }
+      if (r === Infinity) return null;
     }
-    if (r === Infinity) return null;
   }
 
   for (const wid of term.wireIds) {
@@ -196,6 +231,14 @@ export function calcBehavior(comp, dcOut) {
     case 'switch_': case 'pushbtn':
       state = comp._closed && act ? 'ACTIVE' : 'OFF';
       powerLevel = comp._closed && act ? 1 : 0;
+      break;
+    case 'spdt':
+      state = comp._position !== 'off' && act ? 'ACTIVE' : 'OFF';
+      powerLevel = state === 'ACTIVE' ? 1 : 0;
+      break;
+    case 'dpdt':
+      state = comp._position !== 'off' && act ? 'ACTIVE' : 'OFF';
+      powerLevel = state === 'ACTIVE' ? 1 : 0;
       break;
     case 'relay':
       if (comp._energized) {

@@ -247,7 +247,12 @@ export default function CanvasView({
                                   borderRadius: '0 0 0 13px', transition: 'width .2s' }} />
                   )}
 
-                  <span style={{ fontSize: 22, lineHeight: 1, position: 'relative' }}>{def.emoji}</span>
+                  <span style={{
+                    fontSize: 22, lineHeight: 1, position: 'relative', display: 'inline-block',
+                    animation: comp.type === 'motor' && bh?.state === 'ACTIVE'
+                      ? `spin ${Math.max(0.3, 1 - (bh.powerLevel ?? 0) * 0.7)}s linear infinite`
+                      : 'none',
+                  }}>{def.emoji}</span>
                   <span style={{
                     fontSize: 8, color: T.sub, letterSpacing: '.04em', position: 'relative',
                     maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -262,13 +267,49 @@ export default function CanvasView({
                       onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); comp._closed = !comp._closed; bump(); }}
                       onClick={e => { e.stopPropagation(); comp._closed = !comp._closed; bump(); }}
                       style={{
-                        position: 'absolute', bottom: 4, right: 4, width: 16, height: 16,
-                        borderRadius: 4, border: 'none', fontSize: 9, cursor: 'pointer',
-                        background: comp._closed ? T.green : T.red, color: '#000',
-                        touchAction: 'none', zIndex: 8,
+                        position: 'absolute', bottom: 3, right: 3, width: 22, height: 22,
+                        borderRadius: 6, border: 'none', fontSize: 11, cursor: 'pointer',
+                        background: comp._closed ? T.green : '#ff4444', color: '#000',
+                        touchAction: 'none', zIndex: 8, fontWeight: 700,
+                        boxShadow: comp._closed ? `0 0 8px ${T.green}88` : '0 0 8px #ff444488',
                       }}>
                       {comp._closed ? '●' : '○'}
                     </button>
+                  )}
+                  {comp.type === 'spdt' && (
+                    <div style={{ position:'absolute', bottom:3, left:3, right:3, display:'flex', gap:2, zIndex:8 }}
+                      onMouseDown={e => e.stopPropagation()}
+                      onTouchStart={e => e.stopPropagation()}>
+                      {[['nc','NC','#ff8c00'],['off','·','#555'],['no','NO',T.green]].map(([pos,lbl,col]) => (
+                        <button key={pos}
+                          onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); comp._position = pos; bump(); }}
+                          onClick={e => { e.stopPropagation(); comp._position = pos; bump(); }}
+                          style={{ flex:1, height:16, borderRadius:4, border:'none', fontSize:8, cursor:'pointer',
+                                   fontWeight:700, touchAction:'none',
+                                   background: comp._position === pos ? col : '#222',
+                                   color: comp._position === pos ? '#000' : '#555' }}>
+                          {lbl}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {comp.type === 'dpdt' && (
+                    <div style={{ position:'absolute', bottom:3, left:2, right:2, display:'flex', gap:2, zIndex:8 }}
+                      onMouseDown={e => e.stopPropagation()}
+                      onTouchStart={e => e.stopPropagation()}>
+                      {[['rev','◀ REV','#ffd700'],['off','·','#555'],['fwd','FWD ▶',T.green]].map(([pos,lbl,col]) => (
+                        <button key={pos}
+                          onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); comp._position = pos; bump(); }}
+                          onClick={e => { e.stopPropagation(); comp._position = pos; bump(); }}
+                          style={{ flex:1, height:18, borderRadius:5, border:'none', fontSize:8, cursor:'pointer',
+                                   fontWeight:700, touchAction:'none',
+                                   background: comp._position === pos ? col : '#222',
+                                   color: comp._position === pos ? '#000' : '#555',
+                                   boxShadow: comp._position === pos ? `0 0 6px ${col}88` : 'none' }}>
+                          {lbl}
+                        </button>
+                      ))}
+                    </div>
                   )}
                   {((comp.type === 'fuse' && comp._blown) || (comp.type === 'breaker' && comp._tripped)) && (
                     <button
