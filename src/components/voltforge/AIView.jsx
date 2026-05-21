@@ -63,7 +63,12 @@ BUILD RULES (follow every time):
 6. For complex circuits (winch, alarm, motor reversing): use relays for switching, fuses for protection
 
 BUILD FORMAT — respond with this exact structure:
-<build>{"action":"build","components":[{"type":"battery","x":60,"y":200,"rotation":0},{"type":"fuse","x":200,"y":200,"rotation":0}],"wires":[{"from":"battery:pos","to":"fuse:in","color":"#ff3333"},{"from":"battery:neg","to":"motor:neg","color":"#111111"}]}</build>
+- Each component MUST have a unique "label" field (e.g. "bat1", "fuse1", "relay_fwd", "relay_rev"). NO two components share a label.
+- Wires reference components by their label: "label:terminal_key"
+- ALWAYS include ground return wires connecting all negative/ground terminals back to battery:neg
+<build>{"action":"build","components":[{"type":"battery","label":"bat1","x":60,"y":200,"rotation":0},{"type":"fuse","label":"fuse1","x":200,"y":200,"rotation":0},{"type":"motor","label":"mot1","x":460,"y":200,"rotation":0}],"wires":[{"from":"bat1:pos","to":"fuse1:in","color":"#ff3333"},{"from":"fuse1:out","to":"mot1:pos","color":"#ff3333"},{"from":"mot1:neg","to":"bat1:neg","color":"#111111"}]}</build>
+
+GROUND RULE (CRITICAL): Every circuit MUST have a complete return path. Connect EVERY load's negative terminal back to battery negative with a BLACK (#111111) wire. No component should be isolated (0 wires). Verify every component has at least 2 wires before finishing.
 
 REAL-WORLD CIRCUIT PATTERNS:
 WINCH (12V automotive): battery → fuse(high-amp 100A+) → relay_forward + relay_reverse (H-bridge) → motor. Control: switch_ triggers relay coils. Red=battery+, Black=ground, Yellow=reverse leg, Blue=control signal, Purple=relay coil.
@@ -132,17 +137,19 @@ USER QUESTION: ${text}`;
                     G.rotateComponent(comp.id);
                   }
                 }
-                placedComps.set(compSpec.type, comp);
+                // Use label as key (supports multiple same-type components)
+                const key = compSpec.label || compSpec.type;
+                placedComps.set(key, comp);
               }
             });
 
             // Connect wires
             if (buildCmd.wires) {
               buildCmd.wires.forEach(wireSpec => {
-                const [fromType, fromTerm] = wireSpec.from.split(':');
-                const [toType, toTerm] = wireSpec.to.split(':');
-                const fromComp = placedComps.get(fromType);
-                const toComp = placedComps.get(toType);
+                const [fromLabel, fromTerm] = wireSpec.from.split(':');
+                const [toLabel, toTerm] = wireSpec.to.split(':');
+                const fromComp = placedComps.get(fromLabel);
+                const toComp = placedComps.get(toLabel);
                 if (fromComp && toComp) {
                   const fromTermObj = fromComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === fromTerm);
                   const toTermObj = toComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === toTerm);

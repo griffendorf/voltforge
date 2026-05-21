@@ -26,7 +26,7 @@ export default function VFHeader({
       {/* Undo */}
       <button onClick={doUndo} disabled={!canUndo}
         title="Undo"
-        style={{ width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+        style={{ width: 34, height: 34, minHeight: 0, minWidth: 0, borderRadius: 8, flexShrink: 0,
                  border: `1px solid ${canUndo ? T.blue + '55' : T.dim + '33'}`,
                  background: canUndo ? `${T.blue}10` : 'transparent',
                  color: canUndo ? T.blue : T.dim,
@@ -40,20 +40,20 @@ export default function VFHeader({
       {/* Zoom controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
         <button onClick={onZoomOut}
-          style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${T.b2}`,
+          style={{ width: 26, height: 26, minHeight: 0, minWidth: 0, borderRadius: 6, border: `1px solid ${T.b2}`,
                    background: T.card, color: T.text, fontSize: 14,
                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           −
         </button>
         <button onClick={onZoomReset}
           title="Reset zoom"
-          style={{ height: 26, padding: '0 6px', borderRadius: 6, border: `1px solid ${T.b2}`,
+          style={{ height: 26, minHeight: 0, padding: '0 6px', borderRadius: 6, border: `1px solid ${T.b2}`,
                    background: T.card, color: zoom !== 1 ? T.cyan : T.sub, fontSize: 8,
                    minWidth: 34, fontFamily: 'JetBrains Mono, monospace' }}>
           {Math.round(zoom * 100)}%
         </button>
         <button onClick={onZoomIn}
-          style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${T.b2}`,
+          style={{ width: 26, height: 26, minHeight: 0, minWidth: 0, borderRadius: 6, border: `1px solid ${T.b2}`,
                    background: T.card, color: T.text, fontSize: 14,
                    display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           ＋
@@ -87,7 +87,7 @@ export default function VFHeader({
         onClick={() => setAutoSnap(v => !v)}
         title={autoSnap ? 'AutoSnap ON — tap to disable' : 'AutoSnap OFF — tap to enable'}
         style={{
-          height: 34, padding: '0 12px', borderRadius: 9, flexShrink: 0,
+          height: 34, minHeight: 0, minWidth: 0, padding: '0 12px', borderRadius: 9, flexShrink: 0,
           border: `1.5px solid ${autoSnap ? T.cyan : T.b2}`,
           background: autoSnap ? `${T.cyan}18` : T.card,
           color: autoSnap ? T.cyan : T.sub,
