@@ -9,6 +9,8 @@ import { bezier, rubber } from '@/lib/voltforge/routing';
 import { buildAIContext } from '@/lib/voltforge/ai-context';
 
 import VFHeader from '@/components/voltforge/VFHeader';
+import UpgradePrompt from '@/components/voltforge/UpgradePrompt';
+import { useSubscription } from '@/lib/useSubscription';
 import VFBottomNav from '@/components/voltforge/VFBottomNav';
 import CanvasView from '@/components/voltforge/CanvasView';
 import PartsView from '@/components/voltforge/PartsView';
@@ -58,6 +60,8 @@ export default function VoltForge() {
   const [autoSnap, setAutoSnap] = useState(false);
   const autoSnapRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const { tier } = useSubscription();
 
   const rbSvgRef = useRef(null);
   const drawing = useRef(null);
@@ -74,9 +78,13 @@ export default function VoltForge() {
   const view = ROUTE_TO_VIEW[location.pathname] || 'canvas';
 
   const setView = useCallback((newView) => {
+    if (newView === 'ai' && tier === 'free') {
+      setShowUpgrade(true);
+      return;
+    }
     const route = VIEW_TO_ROUTE[newView];
     if (route) navigate(route);
-  }, [navigate]);
+  }, [navigate, tier]);
 
   useEffect(() => {
     SIM.onChange = () => setSimSnap(SIM.snap ? { ...SIM.snap } : null);
@@ -531,34 +539,25 @@ export default function VoltForge() {
         )}
       </SlideTransition>
 
-      <VFBottomNav 
-        view={view} 
-        setView={setView} 
+      {showUpgrade && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
+      <VFBottomNav
+        view={view}
+        setView={setView}
         onTabReset={(tabId) => {
-          // Reset view-specific state when tapping active tab
           if (tabId === 'ai') {
-            // Reset AI chat
             setAiHL({ compIds: [], type: 'info' });
           } else if (tabId === 'info') {
-            // Deselect component
             setSelected(null);
           } else if (tabId === 'canvas') {
-            // Reset zoom and pan
-            zoomRef.current = 1;
-            panRef.current = { x: 0, y: 0 };
-            setZoom(1);
-            setPan({ x: 0, y: 0 });
-            setSelected(null);
-          } else if (tabId === 'sim') {
-            // No specific reset needed
+            zoomRef.current = 1; panRef.current = { x: 0, y: 0 };
+            setZoom(1); setPan({ x: 0, y: 0 }); setSelected(null);
           } else if (tabId === 'parts') {
-            // Cancel placing mode
             if (placing) setPlacing(null);
-          } else if (tabId === 'save') {
-            // No specific reset needed
           }
         }}
       />
     </div>
+  );
+}
   );
 }
