@@ -246,17 +246,7 @@ export default function CanvasView({
                                   width: `${bh.powerLevel * 100}%`, background: STATE_COL[bh.state] ?? T.sub,
                                   borderRadius: '0 0 0 13px', transition: 'width .2s' }} />
                   )}
-                  {bh && bh.state !== 'OFF' && bh.state !== 'FAULT' && (
-                    <div style={{
-                      position: 'absolute', top: -8, left: '50%',
-                      transform: 'translateX(-50%)', padding: '1px 6px',
-                      borderRadius: 5, fontSize: 7, fontWeight: 700,
-                      background: STATE_COL[bh.state] ?? T.sub, color: '#000',
-                      whiteSpace: 'nowrap', zIndex: 6,
-                    }}>
-                      {bh.state}
-                    </div>
-                  )}
+
                   <span style={{ fontSize: 22, lineHeight: 1, position: 'relative' }}>{def.emoji}</span>
                   <span style={{
                     fontSize: 8, color: T.sub, letterSpacing: '.04em', position: 'relative',
