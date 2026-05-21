@@ -60,6 +60,7 @@ function getExitTerm(comp, entryTid) {
   return undefined; // not a multi-throw switch
 }
 
+// Find a single path (used for short-circuit detection)
 function findPath(graph, startTid, endTid, depth, visited, visitedComps) {
   if (depth > 80 || visited.has(startTid)) return null;
   if (startTid === endTid && depth > 0) return { steps:[], R:0 };
@@ -105,7 +106,7 @@ function findPath(graph, startTid, endTid, depth, visited, visitedComps) {
   return null;
 }
 
-// Find ALL parallel paths from startTid to endTid
+// Find ALL parallel paths from source+ to source-
 function findAllPaths(graph, startTid, endTid, depth, visited, visitedComps) {
   if (depth > 80 || visited.has(startTid)) return [];
   if (startTid === endTid && depth > 0) return [{ steps:[], R:0 }];
@@ -181,7 +182,7 @@ export function solveDC(graph) {
     if (Vs < 0.01) return;
     out.Vs = Math.max(out.Vs, Vs);
 
-    // Find ALL parallel paths
+    // Find all parallel paths
     const paths = findAllPaths(graph, posT.id, negT.id, 0, new Set(), new Set())
       .filter(p => p.R >= 0.3);
 
