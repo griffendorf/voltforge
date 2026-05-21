@@ -185,7 +185,7 @@ export default function Pricing() {
       )}
 
       <div style={{ marginTop: 48, color: '#3a6a7a', fontSize: 9, textAlign: 'center', lineHeight: 2 }}>
-        Payments secured by Base44 Payments · Cancel anytime from your account
+        Payments secured & encrypted · Cancel anytime from your account
       </div>
     </div>
   );

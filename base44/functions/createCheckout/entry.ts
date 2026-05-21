@@ -33,14 +33,6 @@ Deno.serve(async (req) => {
 
     const origin = req.headers.get('Origin') || 'https://fast-volt-forge-hub.base44.app';
 
-    // Store a pending subscription so we can link it after webhook fires
-    await base44.asServiceRole.entities.Subscription.create({
-      user_email: user.email,
-      tier: plan,
-      status: 'pending',
-      payment_id: '',
-    });
-
     const response = await fetch(
       'https://www.wixapis.com/payments/platform/v1/checkout-sessions/construct',
       {
@@ -65,7 +57,7 @@ Deno.serve(async (req) => {
 
     const data = await response.json();
     if (!response.ok) {
-      console.error('Wix checkout error:', JSON.stringify(data));
+      console.error('Checkout error:', JSON.stringify(data));
       return Response.json({ error: data.message || 'Checkout failed' }, { status: 500 });
     }
 
