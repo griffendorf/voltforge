@@ -17,7 +17,7 @@ export class SimLoop {
   _hashGraph() {
     let h = '';
     this._g.components.forEach(c =>
-      h += `${c.id}:${c._closed}${c._blown}${c._voltage}${c._irr}|`);
+      h += `${c.id}:${c._closed}${c._blown}${c._voltage}${c._irr}${c._position}${c._energized}${c._tripped}${c._wiper}|`);
     h += [...this._g.wires.keys()].join(',');
     return h;
   }

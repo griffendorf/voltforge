@@ -76,7 +76,7 @@ function findPath(graph, startTid, endTid, depth, visited, visitedComps) {
       if (exitTid !== null) {
         visitedComps.add(comp.id);
         const res = findPath(graph, exitTid, endTid, depth+1, new Set(visited), new Set(visitedComps));
-        if (res) return { steps:[{ kind:'c', id:comp.id, R:0.05 }, ...res.steps], R:0.05+res.R };
+        if (res) return { steps:[{ kind:'c', id:comp.id, R:0.05, entryTid:startTid }, ...res.steps], R:0.05+res.R };
       }
       // switch is open or no path via exit — fall through to wire traversal from current terminal
     } else {
@@ -86,7 +86,7 @@ function findPath(graph, startTid, endTid, depth, visited, visitedComps) {
         for (const otid of comp.termIds) {
           if (otid === startTid) continue;
           const res = findPath(graph, otid, endTid, depth+1, new Set(visited), new Set(visitedComps));
-          if (res) return { steps:[{ kind:'c', id:comp.id, R:r }, ...res.steps], R:r+res.R };
+          if (res) return { steps:[{ kind:'c', id:comp.id, R:r, entryTid:startTid }, ...res.steps], R:r+res.R };
         }
       }
       if (r === Infinity) return null;
@@ -152,6 +152,11 @@ export function solveDC(graph) {
         const co = out.compOut.get(s.id);
         const cc = graph.components.get(s.id);
         co.I += I; co.V = Math.max(co.V, I*s.R); co.P += I*I*s.R; co.active = true;
+        // Detect motor current direction (reversed if current enters via neg terminal)
+        if (cc?.type === 'motor' && s.entryTid) {
+          const posTermId = cc.termIds[0];
+          co.reversed = s.entryTid !== posTermId;
+        }
         if (cc?.type === 'fuse' && !cc._blown && co.I > (cc._rating ?? 1)) {
           cc._blown = true; fuseBlow = true;
         }
@@ -214,6 +219,7 @@ export function calcBehavior(comp, dcOut) {
       powerLevel = state === 'ACTIVE' ? Math.min((V - Vmin) / (Vr - Vmin), 1) : 0;
       break;
     }
+    // reversed flag passed through below
     case 'bulb':
       state = act ? 'ON' : 'OFF';
       powerLevel = Math.min(co.P / (comp._ratedW ?? 1), 1);
@@ -279,5 +285,5 @@ export function calcBehavior(comp, dcOut) {
     default:
       state = act ? 'ACTIVE' : 'OFF';
   }
-  return { state, powerLevel, faults, V:co.V, I:co.I, P:co.P, thermalC };
+  return { state, powerLevel, faults, V:co.V, I:co.I, P:co.P, thermalC, reversed: co.reversed ?? false };
 }

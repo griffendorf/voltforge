@@ -252,6 +252,7 @@ export default function CanvasView({
                     animation: comp.type === 'motor' && bh?.state === 'ACTIVE'
                       ? `spin ${Math.max(0.3, 1 - (bh.powerLevel ?? 0) * 0.7)}s linear infinite`
                       : 'none',
+                    animationDirection: comp.type === 'motor' && bh?.reversed ? 'reverse' : 'normal',
                   }}>{def.emoji}</span>
                   <span style={{
                     fontSize: 8, color: T.sub, letterSpacing: '.04em', position: 'relative',
