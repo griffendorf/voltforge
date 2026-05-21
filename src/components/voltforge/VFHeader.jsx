@@ -1,4 +1,6 @@
+import { useState, useRef, useEffect } from 'react';
 import { T } from '@/lib/voltforge/theme';
+import { base44 } from '@/api/base44Client';
 
 export default function VFHeader({
   simOn, simSnap, simStatus, simCol,
@@ -8,20 +10,72 @@ export default function VFHeader({
   zoom, onZoomIn, onZoomOut, onZoomReset,
 }) {
   const snap = simSnap;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    window.addEventListener('mousedown', close);
+    window.addEventListener('touchstart', close);
+    return () => { window.removeEventListener('mousedown', close); window.removeEventListener('touchstart', close); };
+  }, [menuOpen]);
+
+  const MENU_ITEMS = [
+    { icon: '★', label: 'Upgrade Plan', href: '/pricing' },
+    { icon: '⚙', label: 'Account', href: '/account' },
+    { icon: '↗', label: 'Share / Export', action: () => { navigator.share?.({ title: 'VoltForge Circuit', url: window.location.href }); setMenuOpen(false); } },
+    { divider: true },
+    { icon: '⏻', label: 'Logout', action: () => base44.auth.logout() },
+  ];
 
   return (
     <div style={{ height: 44, flexShrink: 0, display: 'flex', alignItems: 'center',
                   padding: '0 8px', gap: 6, background: T.panel,
                   borderBottom: `1px solid ${T.b1}`,
-                  boxShadow: '0 2px 14px rgba(0,0,0,.8)' }}>
+                  boxShadow: '0 2px 14px rgba(0,0,0,.8)', position: 'relative', zIndex: 100 }}>
 
-      {/* Logo */}
-      <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 700,
-                     background: 'linear-gradient(90deg,#00d4ff,#39ff7a)',
-                     WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                     flexShrink: 0 }}>
-        VF
-      </span>
+      {/* Logo dropdown trigger */}
+      <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
+        <button
+          onClick={() => setMenuOpen(v => !v)}
+          style={{ height: 34, minHeight: 0, minWidth: 0, padding: '0 8px', borderRadius: 8,
+                   border: `1px solid ${menuOpen ? T.cyan + '66' : T.b2}`,
+                   background: menuOpen ? `${T.cyan}12` : 'transparent',
+                   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontFamily: "'Orbitron',sans-serif", fontSize: 12, fontWeight: 700,
+                         background: 'linear-gradient(90deg,#00d4ff,#39ff7a)',
+                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            VF
+          </span>
+          <span style={{ color: T.dim, fontSize: 8, marginTop: 1 }}>▾</span>
+        </button>
+
+        {menuOpen && (
+          <div style={{ position: 'absolute', top: 38, left: 0, minWidth: 160,
+                        background: '#0d1520', border: `1px solid ${T.b2}`,
+                        borderRadius: 10, overflow: 'hidden',
+                        boxShadow: '0 8px 32px rgba(0,0,0,.7)', zIndex: 200 }}>
+            {MENU_ITEMS.map((item, i) => item.divider ? (
+              <div key={i} style={{ height: 1, background: T.b1, margin: '2px 0' }} />
+            ) : (
+              <a key={i}
+                href={item.href || undefined}
+                onClick={item.action ? item.action : () => setMenuOpen(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10,
+                         padding: '10px 14px', cursor: 'pointer', textDecoration: 'none',
+                         color: item.label === 'Logout' ? T.red : T.text,
+                         fontSize: 12, fontFamily: 'JetBrains Mono, monospace',
+                         background: 'transparent', transition: 'background .1s' }}
+                onMouseEnter={e => e.currentTarget.style.background = `${T.b2}66`}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <span style={{ fontSize: 13, width: 16, textAlign: 'center' }}>{item.icon}</span>
+                {item.label}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Undo */}
       <button onClick={doUndo} disabled={!canUndo}
