@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { T } from '@/lib/voltforge/theme';
 import { base44 } from '@/api/base44Client';
 
@@ -10,6 +11,7 @@ export default function VFHeader({
   zoom, onZoomIn, onZoomOut, onZoomReset,
 }) {
   const snap = simSnap;
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -22,9 +24,9 @@ export default function VFHeader({
   }, [menuOpen]);
 
   const MENU_ITEMS = [
-    { icon: '★', label: 'Upgrade Plan', href: '/pricing' },
-    { icon: '⚙', label: 'Account', href: '/account' },
-    { icon: '↗', label: 'Share / Export', action: () => { navigator.share?.({ title: 'VoltForge Circuit', url: window.location.href }); setMenuOpen(false); } },
+    { icon: '★', label: 'Upgrade Plan', action: () => { navigate('/pricing'); setMenuOpen(false); } },
+    { icon: '⚙', label: 'Account', action: () => { navigate('/account'); setMenuOpen(false); } },
+    { icon: '↗', label: 'Share', action: () => { navigator.share?.({ title: 'VoltForge Circuit', url: window.location.href }); setMenuOpen(false); } },
     { divider: true },
     { icon: '⏻', label: 'Logout', action: () => base44.auth.logout() },
   ];
@@ -59,19 +61,18 @@ export default function VFHeader({
             {MENU_ITEMS.map((item, i) => item.divider ? (
               <div key={i} style={{ height: 1, background: T.b1, margin: '2px 0' }} />
             ) : (
-              <a key={i}
-                href={item.href || undefined}
-                onClick={item.action ? item.action : () => setMenuOpen(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10,
-                         padding: '10px 14px', cursor: 'pointer', textDecoration: 'none',
-                         color: item.label === 'Logout' ? T.red : T.text,
-                         fontSize: 12, fontFamily: 'JetBrains Mono, monospace',
-                         background: 'transparent', transition: 'background .1s' }}
-                onMouseEnter={e => e.currentTarget.style.background = `${T.b2}66`}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <button key={i}
+              onClick={item.action}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                       padding: '10px 14px', cursor: 'pointer', textDecoration: 'none',
+                       color: item.label === 'Logout' ? T.red : T.text,
+                       fontSize: 12, fontFamily: 'JetBrains Mono, monospace',
+                       background: 'transparent', border: 'none', transition: 'background .1s', textAlign: 'left' }}
+              onMouseEnter={e => e.currentTarget.style.background = `${T.b2}66`}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <span style={{ fontSize: 13, width: 16, textAlign: 'center' }}>{item.icon}</span>
                 {item.label}
-              </a>
+                </button>
             ))}
           </div>
         )}
