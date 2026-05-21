@@ -36,7 +36,7 @@ export default function VFBottomNav({ view, setView, onTabReset }) {
                    color: view === n.id ? T.blue : T.dim,
                    fontSize:15, transition:'color .15s' }}>
           <span>{n.icon}</span>
-          <span style={{ fontSize:7, letterSpacing:'.08em',
+          <span style={{ fontSize:9, letterSpacing:'.08em',
                          fontWeight: view === n.id ? 700 : 400 }}>{n.label}</span>
         </button>
       ))}
@@ -48,7 +48,7 @@ export default function VFBottomNav({ view, setView, onTabReset }) {
                    color: T.green, textDecoration:'none',
                    fontSize:15, transition:'color .15s' }}>
           <span>{e.icon}</span>
-          <span style={{ fontSize:7, letterSpacing:'.08em',
+          <span style={{ fontSize:9, letterSpacing:'.08em',
                          fontWeight:400 }}>{e.label}</span>
         </a>
       ))}
