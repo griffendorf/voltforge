@@ -84,9 +84,15 @@ If uncertain, state it clearly and build the safest approximation. NEVER connect
 For analysis questions, optionally append: <hl>{"compIds":["id1","id2"],"type":"info"}</hl>
 type values: info | warning | error | success`;
 
+const QUICK_PROMPTS = [
+  { label: '🚨 Evacuation Alarm', text: 'Build a complete 12V DC evacuation alarm unit: battery source with a 5A breaker on the positive line, a normally-open push button wired to a relay coil, the relay switched contact powering both a buzzer and a red LED in parallel, a green LED status light through a resistor directly from source, and a second switch as manual override bypassing the relay to trigger the alarm loads. Use red for positive, black for ground, blue for control signals, green for status.' },
+  { label: '💡 Parallel Bulbs', text: 'Build a 9V battery circuit with 3 bulbs wired in parallel, each with its own switch, and a fuse on the positive line. Use red for positive, black for ground.' },
+  { label: '⚙️ Motor Reversing', text: 'Build a 12V DC motor reversing circuit using a DPDT switch with a battery, fuse, and motor. Wire it so the DPDT controls forward and reverse. Use red for positive, black for ground, yellow for reverse leg.' },
+  { label: '🔋 LED + Resistor', text: 'Build a simple 9V battery circuit with a switch, a 220 ohm current-limiting resistor, and an LED. Include proper wire colors.' },
+];
+
 export default function AIView({ snap, setAiHL, setView, bump, aiMsgs, setAiMsgs }) {
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [showQuick, setShowQuick] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -261,14 +267,33 @@ USER QUESTION: ${text}`;
         <div ref={chatEndRef}/>
       </div>
 
+      {showQuick && (
+        <div style={{ flexShrink:0, padding:'6px 10px', background:T.panel,
+                      borderTop:`1px solid ${T.b1}`, display:'flex', gap:6,
+                      overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
+          {QUICK_PROMPTS.map((qp, i) => (
+            <button key={i}
+              onClick={() => { setInput(qp.text); setShowQuick(false); }}
+              style={{ flexShrink:0, padding:'6px 12px', borderRadius:20,
+                       border:`1px solid ${T.blue}44`, background:`${T.blue}0d`,
+                       color:T.blue, fontSize:11, cursor:'pointer', whiteSpace:'nowrap',
+                       fontFamily:'JetBrains Mono, monospace' }}>
+              {qp.label}
+            </button>
+          ))}
+        </div>
+      )}
       <div style={{ flexShrink:0, padding:'8px 10px', background:T.panel,
                     borderTop:`1px solid ${T.b1}`, display:'flex', gap:8 }}>
-        <input value={input} onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') sendAI(input); }}
-          placeholder="Ask about your circuit…"
-          style={{ flex:1, padding:'10px 14px', borderRadius:10,
-                   border:`1px solid ${T.b2}`, background:T.card, color:T.text,
-                   fontSize:12, outline:'none', fontFamily:'JetBrains Mono, monospace' }}/>
+        <button
+          onClick={() => setShowQuick(v => !v)}
+          style={{ padding:'0 12px', borderRadius:10, border:`1px solid ${T.b2}`,
+                   background: showQuick ? `${T.blue}22` : T.card,
+                   color: showQuick ? T.blue : T.dim,
+                   fontSize:16, cursor:'pointer', flexShrink:0 }}
+          title="Quick prompts">
+          ⚡
+        </button>
         <button onClick={() => sendAI(input)}
           disabled={loading || !input.trim()}
           style={{ padding:'0 18px', borderRadius:10, border:'none',
