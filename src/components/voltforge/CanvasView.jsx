@@ -268,6 +268,7 @@ export default function CanvasView({
                       onClick={e => { e.stopPropagation(); comp._closed = !comp._closed; bump(); }}
                       style={{
                         position: 'absolute', bottom: 3, right: 3, width: 22, height: 22,
+                        minHeight: 0, minWidth: 0,
                         borderRadius: 6, border: 'none', fontSize: 11, cursor: 'pointer',
                         background: comp._closed ? T.green : '#ff4444', color: '#000',
                         touchAction: 'none', zIndex: 8, fontWeight: 700,
@@ -284,7 +285,7 @@ export default function CanvasView({
                         <button key={pos}
                           onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); comp._position = pos; bump(); }}
                           onClick={e => { e.stopPropagation(); comp._position = pos; bump(); }}
-                          style={{ flex:1, height:16, borderRadius:4, border:'none', fontSize:8, cursor:'pointer',
+                          style={{ flex:1, height:16, minHeight:0, minWidth:0, borderRadius:4, border:'none', fontSize:8, cursor:'pointer',
                                    fontWeight:700, touchAction:'none',
                                    background: comp._position === pos ? col : '#222',
                                    color: comp._position === pos ? '#000' : '#555' }}>
@@ -301,7 +302,7 @@ export default function CanvasView({
                         <button key={pos}
                           onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); comp._position = pos; bump(); }}
                           onClick={e => { e.stopPropagation(); comp._position = pos; bump(); }}
-                          style={{ flex:1, height:18, borderRadius:5, border:'none', fontSize:8, cursor:'pointer',
+                          style={{ flex:1, height:18, minHeight:0, minWidth:0, borderRadius:5, border:'none', fontSize:8, cursor:'pointer',
                                    fontWeight:700, touchAction:'none',
                                    background: comp._position === pos ? col : '#222',
                                    color: comp._position === pos ? '#000' : '#555',
@@ -329,6 +330,7 @@ export default function CanvasView({
                       }}
                       style={{
                         position: 'absolute', bottom: 3, right: 3, width: 18, height: 18,
+                        minHeight: 0, minWidth: 0,
                         borderRadius: 5, border: 'none', fontSize: 11, cursor: 'pointer',
                         background: T.amber, color: '#000', touchAction: 'none', zIndex: 8,
                       }}>↺</button>
@@ -345,6 +347,7 @@ export default function CanvasView({
                       onClick={e => { e.stopPropagation(); G.removeComponent(comp.id); setSelected(null); bump(); }}
                       style={{
                         position: 'absolute', top: -12, right: -12, width: 28, height: 28,
+                        minHeight: 0, minWidth: 0,
                         borderRadius: '50%', border: 'none', background: T.red, color: '#fff',
                         fontSize: 14, zIndex: 30, display: 'flex', alignItems: 'center',
                         justifyContent: 'center', boxShadow: `0 0 10px ${T.red}99`,
@@ -357,6 +360,7 @@ export default function CanvasView({
                       onClick={e => { e.stopPropagation(); G.rotateComponent(comp.id); setSelected(comp.id); bump(); }}
                       style={{
                         position: 'absolute', top: -12, left: -12, width: 28, height: 28,
+                        minHeight: 0, minWidth: 0,
                         borderRadius: '50%', border: 'none', background: T.purple, color: '#fff',
                         fontSize: 14, zIndex: 30, display: 'flex', alignItems: 'center',
                         justifyContent: 'center', boxShadow: `0 0 10px ${T.purple}99`,
