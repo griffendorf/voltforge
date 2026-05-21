@@ -55,7 +55,7 @@ export const DEFS = {
            {key:'t2',label:'2', lp:{x:72,y:36},dir:'right', pol:'neutral'}]},
 
   // ── SEMICONDUCTORS
-  led:       { label:'LED',        emoji:'💡', color:T.green,
+  led:       { label:'LED',        emoji:'LED', color:T.green,
     _role:'load', _fwdV:1.8, _maxI:0.05,
     terms:[{key:'an',label:'A+', lp:{x:0,y:36}, dir:'left',  pol:'neutral'},
            {key:'ca',label:'K−', lp:{x:72,y:36},dir:'right', pol:'neutral'}]},
@@ -94,7 +94,7 @@ export const DEFS = {
     terms:[{key:'pos',label:'M+', lp:{x:0,y:36}, dir:'left',  pol:'neutral'},
            {key:'neg',label:'M−', lp:{x:72,y:36},dir:'right', pol:'neutral'}]},
 
-  bulb:      { label:'Bulb',       emoji:'💫', color:'#ffd54f',
+  bulb:      { label:'Bulb',       emoji:'BULB', color:'#ffd54f',
     _role:'load', _ohms:60, _ratedW:1,
     terms:[{key:'t1',label:'1', lp:{x:0,y:36}, dir:'left',  pol:'neutral'},
            {key:'t2',label:'2', lp:{x:72,y:36},dir:'right', pol:'neutral'}]},

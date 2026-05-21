@@ -189,16 +189,20 @@ export default function CanvasView({
             const aiHLCol = { info: T.blue, warning: T.amber, error: T.red, success: T.green }[aiHL.type] || T.blue;
 
             // Sim glow effects
+            const isLit = simRunning && bh?.state === 'ON' && (comp.type === 'bulb' || comp.type === 'led');
+            const litColor = comp.type === 'bulb' ? '#ffe066' : def.color;
             const isErrorComp = simHasErrors && hasErr;
-            const isHotComp = simRunning;
+            const isHotComp = simRunning && comp.type !== 'bulb' && comp.type !== 'led';
             const hotColor = '#ff6b00';
             const errGlowColor = T.red;
 
             const borderColor = isSel ? T.blue
+              : isLit ? litColor
               : isErrorComp ? errGlowColor
               : isHotComp ? hotColor
               : isAiHL ? aiHLCol : simBCol || issColor || T.b2;
             const glowColor = isSel ? T.blue
+              : isLit ? litColor
               : isErrorComp ? errGlowColor
               : isHotComp ? hotColor
               : isAiHL ? aiHLCol : simBCol || issColor;
@@ -217,7 +221,11 @@ export default function CanvasView({
                 {/* Card */}
                 <div style={{
                   position: 'absolute', inset: 0, borderRadius: 13,
-                  background: isHotComp
+                  background: isLit && comp.type === 'bulb'
+                    ? 'radial-gradient(ellipse at center, #2a2000 0%, #100e00 100%)'
+                    : isLit && comp.type === 'led'
+                    ? `radial-gradient(ellipse at center, #002a1a 0%, #000d08 100%)`
+                    : isHotComp
                     ? 'radial-gradient(ellipse at center, #1a0d00 0%, #0d0a08 100%)'
                     : isErrorComp
                     ? 'radial-gradient(ellipse at center, #1a0000 0%, #0d0808 100%)'
@@ -247,13 +255,57 @@ export default function CanvasView({
                                   borderRadius: '0 0 0 13px', transition: 'width .2s' }} />
                   )}
 
-                  <span style={{
-                    fontSize: 22, lineHeight: 1, position: 'relative', display: 'inline-block',
-                    animation: comp.type === 'motor' && bh?.state === 'ACTIVE'
-                      ? `spin ${Math.max(0.3, 1 - (bh.powerLevel ?? 0) * 0.7)}s linear infinite`
-                      : 'none',
-                    animationDirection: comp.type === 'motor' && bh?.reversed ? 'reverse' : 'normal',
-                  }}>{def.emoji}</span>
+                  {/* Bulb glow overlay */}
+                  {(comp.type === 'bulb' || comp.type === 'led') && bh?.state === 'ON' && (
+                    <div style={{
+                      position: 'absolute', inset: -8, borderRadius: 18, pointerEvents: 'none',
+                      background: comp.type === 'bulb'
+                        ? 'radial-gradient(ellipse at center, rgba(255,230,100,0.55) 0%, rgba(255,180,0,0.18) 50%, transparent 75%)'
+                        : `radial-gradient(ellipse at center, ${def.color}88 0%, ${def.color}28 50%, transparent 75%)`,
+                      animation: 'pulse 1.1s ease-in-out infinite',
+                      zIndex: 1,
+                    }} />
+                  )}
+
+                  {/* LED symbol */}
+                  {comp.type === 'led' ? (
+                    <svg width="28" height="24" viewBox="0 0 28 24" style={{ position: 'relative', zIndex: 2 }}>
+                      {/* Diode triangle */}
+                      <polygon points="6,4 6,20 18,12" fill={bh?.state === 'ON' ? def.color : '#444'}
+                        stroke={bh?.state === 'ON' ? def.color : '#666'} strokeWidth="1.5"/>
+                      {/* Cathode bar */}
+                      <line x1="18" y1="4" x2="18" y2="20" stroke={bh?.state === 'ON' ? def.color : '#666'} strokeWidth="2"/>
+                      {/* Light rays when ON */}
+                      {bh?.state === 'ON' && (
+                        <>
+                          <line x1="21" y1="6" x2="26" y2="3" stroke={def.color} strokeWidth="1.5" strokeLinecap="round" opacity="0.9"/>
+                          <line x1="22" y1="10" x2="27" y2="9" stroke={def.color} strokeWidth="1.5" strokeLinecap="round" opacity="0.9"/>
+                          <line x1="21" y1="14" x2="26" y2="16" stroke={def.color} strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+                        </>
+                      )}
+                    </svg>
+                  ) : comp.type === 'bulb' ? (
+                    <svg width="26" height="28" viewBox="0 0 26 28" style={{ position: 'relative', zIndex: 2 }}>
+                      {/* Bulb glass dome */}
+                      <path d="M13,3 C7,3 3,7.5 3,13 C3,17 5.5,20.5 9,22 L9,24 L17,24 L17,22 C20.5,20.5 23,17 23,13 C23,7.5 19,3 13,3 Z"
+                        fill={bh?.state === 'ON' ? '#ffe066' : '#2a2a2a'}
+                        stroke={bh?.state === 'ON' ? '#ffcc00' : '#555'} strokeWidth="1.5"
+                        style={{ transition: 'fill 0.15s, stroke 0.15s' }}/>
+                      {/* Filament */}
+                      <path d="M10,24 L10,26 L16,26 L16,24" fill="none"
+                        stroke={bh?.state === 'ON' ? '#ffaa00' : '#555'} strokeWidth="1.5"/>
+                      {/* Base lines */}
+                      <line x1="10" y1="26" x2="16" y2="26" stroke={bh?.state === 'ON' ? '#ffaa00' : '#555'} strokeWidth="1"/>
+                    </svg>
+                  ) : (
+                    <span style={{
+                      fontSize: 22, lineHeight: 1, position: 'relative', display: 'inline-block', zIndex: 2,
+                      animation: comp.type === 'motor' && bh?.state === 'ACTIVE'
+                        ? `spin ${Math.max(0.3, 1 - (bh.powerLevel ?? 0) * 0.7)}s linear infinite`
+                        : 'none',
+                      animationDirection: comp.type === 'motor' && bh?.reversed ? 'reverse' : 'normal',
+                    }}>{def.emoji}</span>
+                  )}
                   <span style={{
                     fontSize: 8, color: T.sub, letterSpacing: '.04em', position: 'relative',
                     maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
