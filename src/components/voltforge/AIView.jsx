@@ -92,17 +92,19 @@ const QUICK_PROMPTS = [
 ];
 
 export default function AIView({ snap, setAiHL, setView, bump, aiMsgs, setAiMsgs }) {
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showQuick, setShowQuick] = useState(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior:'smooth' });
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [aiMsgs, loading]);
 
   const sendAI = useCallback(async (text) => {
     if (!text.trim() || loading) return;
     setInput('');
-    setAiMsgs(m => [...m, { role:'user', content:text }]);
+    setAiMsgs(m => [...m, { role: 'user', content: text }]);
     setLoading(true);
 
     const context = buildAIContext(G, snap);
@@ -124,16 +126,14 @@ USER QUESTION: ${text}`;
         prompt,
         model: 'gemini_3_flash',
       });
-      
+
       const raw = typeof response === 'string' ? response : JSON.stringify(response);
 
-      // Check for build command
       const buildMatch = raw.match(/<build>([\s\S]*?)<\/build>/);
       if (buildMatch) {
         try {
           const buildCmd = JSON.parse(buildMatch[1]);
           if (buildCmd.action === 'build') {
-            // Place components
             const placedComps = new Map();
             buildCmd.components.forEach(compSpec => {
               const comp = G.addComponent(compSpec.type, compSpec.x, compSpec.y);
@@ -143,13 +143,11 @@ USER QUESTION: ${text}`;
                     G.rotateComponent(comp.id);
                   }
                 }
-                // Use label as key (supports multiple same-type components)
                 const key = compSpec.label || compSpec.type;
                 placedComps.set(key, comp);
               }
             });
 
-            // Connect wires
             if (buildCmd.wires) {
               buildCmd.wires.forEach(wireSpec => {
                 const [fromLabel, fromTerm] = wireSpec.from.split(':');
@@ -168,8 +166,9 @@ USER QUESTION: ${text}`;
 
             bump();
             const responseText = raw.replace(/<build>[\s\S]*?<\/build>/g, '').trim();
-            setAiMsgs(m => [...m, { role:'assistant', content:responseText || '✓ Circuit built successfully!' }]);
+            setAiMsgs(m => [...m, { role: 'assistant', content: responseText || '✓ Circuit built successfully!' }]);
             setView('canvas');
+            setLoading(false);
             return;
           }
         } catch (e) {
@@ -182,129 +181,135 @@ USER QUESTION: ${text}`;
       try { if (hlMatch) hl = JSON.parse(hlMatch[1]); } catch {}
 
       const clean = raw.replace(/<hl>[\s\S]*?<\/hl>/g, '').replace(/<build>[\s\S]*?<\/build>/g, '').trim();
-      setAiMsgs(m => [...m, { role:'assistant', content:clean, hl }]);
+      setAiMsgs(m => [...m, { role: 'assistant', content: clean, hl }]);
 
       if (hl?.compIds?.length) {
         setAiHL({ compIds: hl.compIds, type: hl.type || 'info' });
-        setTimeout(() => setAiHL({ compIds:[], type:'info' }), 7000);
+        setTimeout(() => setAiHL({ compIds: [], type: 'info' }), 7000);
       }
     } catch {
       const fb = snap?.status === 'running'
-        ? `Circuit is active: ${snap.Vs?.toFixed(1)}V, ${(snap.I*1000)?.toFixed(1)}mA.`
+        ? `Circuit is active: ${snap.Vs?.toFixed(1)}V, ${(snap.I * 1000)?.toFixed(1)}mA.`
         : 'No simulation running — press ▶ RUN first.';
-      setAiMsgs(m => [...m, { role:'assistant', content:`_(offline)_ ${fb}` }]);
+      setAiMsgs(m => [...m, { role: 'assistant', content: `_(offline)_ ${fb}` }]);
     }
     setLoading(false);
-  }, [loading, snap, setAiHL, setAiMsgs]);
+  }, [loading, snap, setAiHL, setAiMsgs, bump, setView]);
 
   return (
-    <div style={{ width:'100%', height:'100%', display:'flex',
-                  flexDirection:'column', overflow:'hidden' }}>
-    <PullToRefresh
-      onRefresh={async () => {}}
-      refreshKey={aiMsgs.length}
-    >
-      <div style={{ flex:1, overflowY:'auto', padding:'12px 12px 8px',
-                    display:'flex', flexDirection:'column', gap:10 }}>
-        {aiMsgs.map((msg, i) => (
-          <div key={i} style={{ display:'flex', flexDirection:'column',
-                                alignItems: msg.role==='user' ? 'flex-end' : 'flex-start',
-                                animation:'popIn .2s ease' }}>
-            {msg.role === 'assistant' && (
-              <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4 }}>
-                <div style={{ width:18, height:18, borderRadius:'50%', flexShrink:0,
-                              background:'linear-gradient(135deg,#00d4ff,#a855f7)',
-                              display:'flex', alignItems:'center', justifyContent:'center',
-                              fontSize:10 }}>✦</div>
-                <span style={{ fontSize:8, color:T.dim }}>VOLT·AI</span>
-              </div>
-            )}
-            <div style={{
-              maxWidth:'88%', padding:'9px 12px', wordBreak:'break-word',
-              borderRadius: msg.role==='user' ? '13px 13px 4px 13px' : '4px 13px 13px 13px',
-              background: msg.role==='user' ? 'rgba(168,85,247,.13)' : T.card,
-              border:`1px solid ${msg.role==='user' ? 'rgba(168,85,247,.3)' : T.b1}`,
-              fontSize:13, lineHeight:1.55, color: msg.role==='user' ? T.purple : T.text,
-            }} dangerouslySetInnerHTML={{ __html: mdRender(msg.content) }}/>
-            {msg.hl?.compIds?.length > 0 && (
-              <button
-                onClick={() => {
-                  setAiHL({ compIds: msg.hl.compIds, type: msg.hl.type||'info' });
-                  setView('canvas');
-                  setTimeout(() => setAiHL({ compIds:[], type:'info' }), 7000);
-                }}
-                style={{ marginTop:5, padding:'3px 10px', borderRadius:10, cursor:'pointer',
-                         border:`1px solid ${T.blue}44`, background:`${T.blue}0a`,
-                         color:T.blue, fontSize:9, alignSelf:'flex-start' }}>
-                ✦ Show on canvas
-              </button>
-            )}
-          </div>
-        ))}
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <PullToRefresh onRefresh={async () => {}} refreshKey={aiMsgs.length}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 8px',
+                      display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {aiMsgs.map((msg, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column',
+                                  alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                  animation: 'popIn .2s ease' }}>
+              {msg.role === 'assistant' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                                background: 'linear-gradient(135deg,#00d4ff,#a855f7)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 10 }}>✦</div>
+                  <span style={{ fontSize: 8, color: T.dim }}>VOLT·AI</span>
+                </div>
+              )}
+              <div style={{
+                maxWidth: '88%', padding: '9px 12px', wordBreak: 'break-word',
+                borderRadius: msg.role === 'user' ? '13px 13px 4px 13px' : '4px 13px 13px 13px',
+                background: msg.role === 'user' ? 'rgba(168,85,247,.13)' : T.card,
+                border: `1px solid ${msg.role === 'user' ? 'rgba(168,85,247,.3)' : T.b1}`,
+                fontSize: 13, lineHeight: 1.55, color: msg.role === 'user' ? T.purple : T.text,
+              }} dangerouslySetInnerHTML={{ __html: mdRender(msg.content) }} />
+              {msg.hl?.compIds?.length > 0 && (
+                <button
+                  onClick={() => {
+                    setAiHL({ compIds: msg.hl.compIds, type: msg.hl.type || 'info' });
+                    setView('canvas');
+                    setTimeout(() => setAiHL({ compIds: [], type: 'info' }), 7000);
+                  }}
+                  style={{ marginTop: 5, padding: '3px 10px', borderRadius: 10, cursor: 'pointer',
+                           border: `1px solid ${T.blue}44`, background: `${T.blue}0a`,
+                           color: T.blue, fontSize: 9, alignSelf: 'flex-start' }}>
+                  ✦ Show on canvas
+                </button>
+              )}
+            </div>
+          ))}
 
-        {loading && (
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:4 }}>
-              <div style={{ width:18, height:18, borderRadius:'50%', flexShrink:0,
-                            background:'linear-gradient(135deg,#00d4ff,#a855f7)',
-                            animation:'pulse 0.7s ease-in-out infinite',
-                            display:'flex', alignItems:'center', justifyContent:'center',
-                            fontSize:10 }}>✦</div>
-              <span style={{ fontSize:8, color:T.dim }}>thinking…</span>
+          {loading && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                <div style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                              background: 'linear-gradient(135deg,#00d4ff,#a855f7)',
+                              animation: 'pulse 0.7s ease-in-out infinite',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 10 }}>✦</div>
+                <span style={{ fontSize: 8, color: T.dim }}>thinking…</span>
+              </div>
+              <div style={{ padding: '9px 14px', borderRadius: '4px 13px 13px 13px',
+                            background: T.card, border: `1px solid ${T.b1}`,
+                            display: 'flex', gap: 5, alignItems: 'center' }}>
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: T.blue,
+                              animation: 'pulse .6s ease-in-out infinite' }} />
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: T.cyan,
+                              animation: 'pulse .6s ease-in-out .15s infinite' }} />
+                <div style={{ width: 4, height: 4, borderRadius: '50%', background: T.purple,
+                              animation: 'pulse .6s ease-in-out .3s infinite' }} />
+              </div>
             </div>
-            <div style={{ padding:'9px 14px', borderRadius:'4px 13px 13px 13px',
-                          background:T.card, border:`1px solid ${T.b1}`,
-                          display:'flex', gap:5, alignItems:'center' }}>
-              <div style={{ width:4, height:4, borderRadius:'50%', background:T.blue,
-                            animation:'pulse .6s ease-in-out infinite' }}/>
-              <div style={{ width:4, height:4, borderRadius:'50%', background:T.cyan,
-                            animation:'pulse .6s ease-in-out .15s infinite' }}/>
-              <div style={{ width:4, height:4, borderRadius:'50%', background:T.purple,
-                            animation:'pulse .6s ease-in-out .3s infinite' }}/>
-            </div>
+          )}
+          <div ref={chatEndRef} />
+        </div>
+
+        {showQuick && (
+          <div style={{ flexShrink: 0, padding: '6px 10px', background: T.panel,
+                        borderTop: `1px solid ${T.b1}`, display: 'flex', gap: 6,
+                        overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            {QUICK_PROMPTS.map((qp, i) => (
+              <button key={i}
+                onClick={() => { setInput(qp.text); setShowQuick(false); }}
+                style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 20,
+                         border: `1px solid ${T.blue}44`, background: `${T.blue}0d`,
+                         color: T.blue, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap',
+                         fontFamily: 'JetBrains Mono, monospace' }}>
+                {qp.label}
+              </button>
+            ))}
           </div>
         )}
-        <div ref={chatEndRef}/>
-      </div>
 
-      {showQuick && (
-        <div style={{ flexShrink:0, padding:'6px 10px', background:T.panel,
-                      borderTop:`1px solid ${T.b1}`, display:'flex', gap:6,
-                      overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
-          {QUICK_PROMPTS.map((qp, i) => (
-            <button key={i}
-              onClick={() => { setInput(qp.text); setShowQuick(false); }}
-              style={{ flexShrink:0, padding:'6px 12px', borderRadius:20,
-                       border:`1px solid ${T.blue}44`, background:`${T.blue}0d`,
-                       color:T.blue, fontSize:11, cursor:'pointer', whiteSpace:'nowrap',
-                       fontFamily:'JetBrains Mono, monospace' }}>
-              {qp.label}
-            </button>
-          ))}
+        <div style={{ flexShrink: 0, padding: '8px 10px', background: T.panel,
+                      borderTop: `1px solid ${T.b1}`, display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setShowQuick(v => !v)}
+            style={{ padding: '0 12px', borderRadius: 10, border: `1px solid ${T.b2}`,
+                     background: showQuick ? `${T.blue}22` : T.card,
+                     color: showQuick ? T.blue : T.dim,
+                     fontSize: 16, cursor: 'pointer', flexShrink: 0 }}
+            title="Quick prompts">
+            ⚡
+          </button>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') sendAI(input); }}
+            placeholder="Ask about your circuit…"
+            style={{ flex: 1, padding: '10px 14px', borderRadius: 10,
+                     border: `1px solid ${T.b2}`, background: T.card, color: T.text,
+                     fontSize: 12, outline: 'none', fontFamily: 'JetBrains Mono, monospace' }} />
+          <button
+            onClick={() => sendAI(input)}
+            disabled={loading || !input.trim()}
+            style={{ padding: '0 18px', borderRadius: 10, border: 'none',
+                     background: loading || !input.trim()
+                       ? T.dim : 'linear-gradient(135deg,#00d4ff,#a855f7)',
+                     color: loading || !input.trim() ? T.sub : '#000',
+                     fontWeight: 700, fontSize: 11, cursor: loading ? 'wait' : 'pointer' }}>
+            ✦
+          </button>
         </div>
-      )}
-      <div style={{ flexShrink:0, padding:'8px 10px', background:T.panel,
-                    borderTop:`1px solid ${T.b1}`, display:'flex', gap:8 }}>
-        <button
-          onClick={() => setShowQuick(v => !v)}
-          style={{ padding:'0 12px', borderRadius:10, border:`1px solid ${T.b2}`,
-                   background: showQuick ? `${T.blue}22` : T.card,
-                   color: showQuick ? T.blue : T.dim,
-                   fontSize:16, cursor:'pointer', flexShrink:0 }}
-          title="Quick prompts">
-          ⚡
-        </button>
-        <button onClick={() => sendAI(input)}
-          disabled={loading || !input.trim()}
-          style={{ padding:'0 18px', borderRadius:10, border:'none',
-                   background: loading || !input.trim()
-                     ? T.dim : 'linear-gradient(135deg,#00d4ff,#a855f7)',
-                   color: loading || !input.trim() ? T.sub : '#000',
-                   fontWeight:700, fontSize:11, cursor: loading ? 'wait' : 'pointer' }}>
-          ✦
-        </button>
-      </div>
-    </PullToRefresh>
+      </PullToRefresh>
     </div>
   );
 }
