@@ -72,13 +72,11 @@ function findPath(graph, startTid, endTid, depth, visited, visitedComps) {
   if (comp && comp._role !== 'source' && !visitedComps.has(comp.id)) {
     const exitTid = getExitTerm(comp, startTid);
     if (exitTid !== undefined) {
-      // multi-throw switch — only route through the designated terminal pair
       if (exitTid !== null) {
         visitedComps.add(comp.id);
         const res = findPath(graph, exitTid, endTid, depth+1, new Set(visited), new Set(visitedComps));
         if (res) return { steps:[{ kind:'c', id:comp.id, R:0.05, entryTid:startTid }, ...res.steps], R:0.05+res.R };
       }
-      // switch is open or no path via exit — fall through to wire traversal from current terminal
     } else {
       const r = compR(comp);
       if (r < Infinity) {
@@ -105,6 +103,55 @@ function findPath(graph, startTid, endTid, depth, visited, visitedComps) {
     if (res) return { steps:[{ kind:'w', wid }, ...res.steps], R:res.R };
   }
   return null;
+}
+
+// Find ALL parallel paths from startTid to endTid
+function findAllPaths(graph, startTid, endTid, depth, visited, visitedComps) {
+  if (depth > 80 || visited.has(startTid)) return [];
+  if (startTid === endTid && depth > 0) return [{ steps:[], R:0 }];
+  const vis = new Set(visited);
+  vis.add(startTid);
+
+  const term = graph.terminals.get(startTid);
+  if (!term) return [];
+  const comp = graph.components.get(term.compId);
+
+  const results = [];
+
+  if (comp && comp._role !== 'source' && !visitedComps.has(comp.id)) {
+    const exitTid = getExitTerm(comp, startTid);
+    if (exitTid !== undefined) {
+      if (exitTid !== null) {
+        const vc = new Set(visitedComps); vc.add(comp.id);
+        findAllPaths(graph, exitTid, endTid, depth+1, new Set(vis), vc)
+          .forEach(res => results.push({ steps:[{ kind:'c', id:comp.id, R:0.05, entryTid:startTid }, ...res.steps], R:0.05+res.R }));
+      }
+      return results; // don't fall through for switch types
+    } else {
+      const r = compR(comp);
+      if (r === Infinity) return [];
+      const vc = new Set(visitedComps); vc.add(comp.id);
+      for (const otid of comp.termIds) {
+        if (otid === startTid) continue;
+        findAllPaths(graph, otid, endTid, depth+1, new Set(vis), vc)
+          .forEach(res => results.push({ steps:[{ kind:'c', id:comp.id, R:r, entryTid:startTid }, ...res.steps], R:r+res.R }));
+      }
+      return results;
+    }
+  }
+
+  for (const wid of term.wireIds) {
+    const w = graph.wires.get(wid);
+    if (!w) continue;
+    const nextTid = w.from === startTid ? w.to : w.from;
+    const nextT   = graph.terminals.get(nextTid);
+    if (!nextT) continue;
+    const nextComp = graph.components.get(nextT.compId);
+    if (nextComp?._role === 'source' && nextTid !== endTid) continue;
+    findAllPaths(graph, nextTid, endTid, depth+1, new Set(vis), new Set(visitedComps))
+      .forEach(res => results.push({ steps:[{ kind:'w', wid }, ...res.steps], R:res.R }));
+  }
+  return results;
 }
 
 export function solveDC(graph) {
@@ -134,38 +181,50 @@ export function solveDC(graph) {
     if (Vs < 0.01) return;
     out.Vs = Math.max(out.Vs, Vs);
 
-    const path = findPath(graph, posT.id, negT.id, 0, new Set(), new Set());
-    if (!path) { out.status = 'open'; return; }
-    if (path.R < 0.3) { out.status = 'short'; return; }
+    // Find ALL parallel paths
+    const paths = findAllPaths(graph, posT.id, negT.id, 0, new Set(), new Set())
+      .filter(p => p.R >= 0.3);
 
-    const Rtot = Math.max(path.R + compR(src), 0.001);
-    const I    = Vs / Rtot;
-    out.I += I;  out.P += Vs * I;  out.ok = true;  out.status = 'running';
+    if (!paths.length) {
+      const anyPath = findPath(graph, posT.id, negT.id, 0, new Set(), new Set());
+      out.status = anyPath ? (anyPath.R < 0.3 ? 'short' : 'open') : 'open';
+      return;
+    }
+
     out.termV.set(posT.id, Vs);
     out.termV.set(negT.id, 0);
+    out.ok = true; out.status = 'running';
+
+    let srcTotalI = 0;
+
+    paths.forEach(path => {
+      const Rtot = Math.max(path.R + compR(src), 0.001);
+      const I    = Vs / Rtot;
+      srcTotalI += I;
+      out.I += I; out.P += Vs * I;
+
+      path.steps.forEach(s => {
+        if (s.kind === 'c') {
+          const co = out.compOut.get(s.id);
+          const cc = graph.components.get(s.id);
+          co.I += I; co.V = Math.max(co.V, I*s.R); co.P += I*I*s.R; co.active = true;
+          if (cc?.type === 'motor' && s.entryTid) {
+            const posTermId = cc.termIds[0];
+            co.reversed = s.entryTid !== posTermId;
+          }
+          if (cc?.type === 'fuse' && !cc._blown && co.I > (cc._rating ?? 1)) {
+            cc._blown = true; fuseBlow = true;
+          }
+        }
+        if (s.kind === 'w') {
+          const wo = out.wireOut.get(s.wid);
+          if (wo) { wo.active = true; wo.I += I; wo.fi = Math.min(wo.I / 0.06, 1); }
+        }
+      });
+    });
 
     const so = out.compOut.get(src.id);
-    so.V = Vs; so.I = I; so.P = Vs*I; so.active = true;
-
-    path.steps.forEach(s => {
-      if (s.kind === 'c') {
-        const co = out.compOut.get(s.id);
-        const cc = graph.components.get(s.id);
-        co.I += I; co.V = Math.max(co.V, I*s.R); co.P += I*I*s.R; co.active = true;
-        // Detect motor current direction (reversed if current enters via neg terminal)
-        if (cc?.type === 'motor' && s.entryTid) {
-          const posTermId = cc.termIds[0];
-          co.reversed = s.entryTid !== posTermId;
-        }
-        if (cc?.type === 'fuse' && !cc._blown && co.I > (cc._rating ?? 1)) {
-          cc._blown = true; fuseBlow = true;
-        }
-      }
-      if (s.kind === 'w') {
-        const wo = out.wireOut.get(s.wid);
-        if (wo) { wo.active = true; wo.I += I; wo.fi = Math.min(wo.I / 0.06, 1); }
-      }
-    });
+    so.V = Vs; so.I = srcTotalI; so.P = Vs*srcTotalI; so.active = true;
   });
 
   if (fuseBlow) return solveDC(graph);
@@ -219,7 +278,6 @@ export function calcBehavior(comp, dcOut) {
       powerLevel = state === 'ACTIVE' ? Math.min((V - Vmin) / (Vr - Vmin), 1) : 0;
       break;
     }
-    // reversed flag passed through below
     case 'bulb':
       state = act ? 'ON' : 'OFF';
       powerLevel = Math.min(co.P / (comp._ratedW ?? 1), 1);
