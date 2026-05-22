@@ -21,7 +21,8 @@
       "enum": [
         "active",
         "cancelled",
-        "expired"
+        "expired",
+        "pending"
       ],
       "title": "Status",
       "default": "active"
@@ -29,6 +30,10 @@
     "payment_id": {
       "type": "string",
       "title": "Payment ID"
+    },
+    "checkout_id": {
+      "type": "string",
+      "title": "Checkout ID"
     },
     "expires_at": {
       "type": "string",

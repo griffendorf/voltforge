@@ -38,22 +38,27 @@ Deno.serve(async (req) => {
         if (lineItem.subscriptionInfo?.id) subscriptionId = lineItem.subscriptionInfo.id;
       }
 
-      // Find pending subscription for this user and activate it
-      const pending = await base44.asServiceRole.entities.Subscription.filter({ user_email: buyerEmail, status: 'pending' });
+      // Find pending subscription by checkoutId (authoritative link — email can change on Wix checkout)
+      let pending = await base44.asServiceRole.entities.Subscription.filter({ checkout_id: checkoutId });
+      if (pending.length === 0 && buyerEmail) {
+        // Fallback: match by email if no checkout_id record found
+        pending = await base44.asServiceRole.entities.Subscription.filter({ user_email: buyerEmail, status: 'pending' });
+      }
       if (pending.length > 0) {
         await base44.asServiceRole.entities.Subscription.update(pending[0].id, {
           status: 'active',
           tier,
           payment_id: subscriptionId || order.id,
         });
-        console.log('Activated subscription for', buyerEmail, 'tier:', tier);
+        console.log('Activated subscription for', pending[0].user_email, 'tier:', tier);
       } else {
-        // Create fresh if no pending record
+        // Create fresh if no pending record exists
         await base44.asServiceRole.entities.Subscription.create({
           user_email: buyerEmail,
           tier,
           status: 'active',
           payment_id: subscriptionId || order.id,
+          checkout_id: checkoutId,
         });
         console.log('Created subscription for', buyerEmail, 'tier:', tier);
       }
