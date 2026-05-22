@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: Deno.env.get('WIX_PAYMENTS_API_KEY'),
+          Authorization: Deno.env.get('WIX_PAYMENT_API_KEY'),
           'wix-site-id': Deno.env.get('WIX_PAYMENTS_SITE_ID'),
         },
         body: JSON.stringify({
