@@ -56,6 +56,9 @@ Deno.serve(async (req) => {
     );
 
     const data = await response.json();
+    console.log('Wix response status:', response.status);
+    console.log('Wix site ID used:', Deno.env.get('WIX_PAYMENTS_SITE_ID'));
+    console.log('Wix response:', JSON.stringify(data));
     if (!response.ok) {
       console.error('Checkout error:', JSON.stringify(data));
       return Response.json({ error: data.message || 'Checkout failed' }, { status: 500 });
