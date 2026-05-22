@@ -29,6 +29,5 @@ export function useSubscription() {
     load();
   }, []);
 
-  // TEMPORARY: grant premium to everyone
-  return { tier: 'premium', loading: false, user };
+  return { tier, loading, user };
 }
