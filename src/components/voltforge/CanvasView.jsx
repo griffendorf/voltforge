@@ -13,7 +13,7 @@ export default function CanvasView({
   onCanvasTouchStart, onCanvasMouseDown,
   onCompPress, onTermPress, setWColor, setSelected, bump,
   isRewire, onWireLongPress,
-  multiSelect, selectionRect,
+  multiSelect, setMultiSelect, selectionRect,
 }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const simHasErrors = simOn && errors?.length > 0;
@@ -103,7 +103,8 @@ export default function CanvasView({
               const wo = snap?.wires?.get(w.id);
               const act = wo?.active ?? false;
               const fi = wo?.fi ?? 0;
-              const col = act ? (fi > 0.6 ? T.green : fi > 0.3 ? T.cyan : T.blue) : w.color;
+              const isWireSel = multiSelect?.has(w.id);
+              const col = isWireSel ? T.cyan : act ? (fi > 0.6 ? T.green : fi > 0.3 ? T.cyan : T.blue) : w.color;
               const d = bezier(tA.wx, tA.wy, tA.dir, tB.wx, tB.wy, tB.dir);
               const Va = snap?.termV?.get(w.from);
 
@@ -128,7 +129,11 @@ export default function CanvasView({
                   if (wireLpTimer) {
                     clearTimeout(wireLpTimer);
                     wireLpTimer = null;
-                    G.removeWire(w.id); bump();
+                    if (multiSelect?.has(w.id)) {
+                      setMultiSelect(prev => { const n = new Set(prev); n.delete(w.id); return n; });
+                    } else {
+                      G.removeWire(w.id); bump();
+                    }
                   }
                   window.removeEventListener(isTouch ? 'touchend' : 'mouseup', cancel);
                 };
@@ -137,8 +142,10 @@ export default function CanvasView({
 
               return (
                 <g key={w.id}>
-                  {act && <path d={d} fill="none" stroke={col} strokeWidth={8}
-                                strokeLinecap="round" opacity={.14} />}
+                  {isWireSel && <path d={d} fill="none" stroke={T.cyan} strokeWidth={14}
+                                strokeLinecap="round" opacity={.22} />}
+                  {(act || isWireSel) && <path d={d} fill="none" stroke={col} strokeWidth={8}
+                                strokeLinecap="round" opacity={isWireSel ? .35 : .14} />}
                   <path d={d} fill="none" stroke={col} strokeWidth={2.5}
                         strokeLinecap="round"
                         style={{

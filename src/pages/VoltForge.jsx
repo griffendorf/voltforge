@@ -301,6 +301,16 @@ export default function VoltForge() {
             newSel.add(comp.id);
           }
         });
+        [...G.wires.values()].forEach(wire => {
+          const tA = G.terminals.get(wire.from), tB = G.terminals.get(wire.to);
+          if (!tA || !tB) return;
+          const mx = (tA.wx + tB.wx) / 2, my = (tA.wy + tB.wy) / 2;
+          if ((tA.wx >= rx1 && tA.wx <= rx2 && tA.wy >= ry1 && tA.wy <= ry2) ||
+              (tB.wx >= rx1 && tB.wx <= rx2 && tB.wy >= ry1 && tB.wy <= ry2) ||
+              (mx >= rx1 && mx <= rx2 && my >= ry1 && my <= ry2)) {
+            newSel.add(wire.id);
+          }
+        });
         setMultiSelect(newSel);
       } else {
         setMultiSelect(new Set());
@@ -436,13 +446,19 @@ export default function VoltForge() {
     const onU = () => {
       clearTimeout(lpTimer.current);
       if (moved) bump();
-      else if (!lpActive.current) setSelected(null);
+      else if (!lpActive.current) {
+        if (multiSelect?.has(compId)) {
+          setMultiSelect(prev => { const n = new Set(prev); n.delete(compId); return n; });
+        } else {
+          setSelected(null);
+        }
+      }
       window.removeEventListener(isTouch ? 'touchmove' : 'mousemove', onM);
       window.removeEventListener(isTouch ? 'touchend' : 'mouseup', onU);
     };
     window.addEventListener(isTouch ? 'touchmove' : 'mousemove', onM, { passive: false });
     window.addEventListener(isTouch ? 'touchend' : 'mouseup', onU);
-  }, [placing, bump]);
+  }, [placing, bump, multiSelect, setMultiSelect]);
 
   const comps = useMemo(() => [...G.components.values()], [ver]);
   const wires = useMemo(() => [...G.wires.values()], [ver]);
@@ -537,6 +553,7 @@ export default function VoltForge() {
               bump={bump}
               isRewire={!!drawing.current?.rewireId}
               multiSelect={multiSelect}
+              setMultiSelect={setMultiSelect}
               selectionRect={selectionRect}
             />
           )}
