@@ -63,6 +63,7 @@ export default function VoltForge() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [multiSelect, setMultiSelect] = useState(new Set());
   const [selectionRect, setSelectionRect] = useState(null);
+  const [clipboard, setClipboard] = useState(null);
   const { tier } = useSubscription();
 
   // Orientation detection
@@ -470,6 +471,62 @@ export default function VoltForge() {
   const snap = simSnap;
   const isDrawing = !!drawing.current;
 
+  const onMultiDelete = useCallback(() => {
+    multiSelect.forEach(id => {
+      if (G.components.has(id)) G.removeComponent(id);
+      else if (G.wires.has(id)) G.removeWire(id);
+    });
+    setMultiSelect(new Set());
+    setSelected(null);
+    bump();
+  }, [multiSelect, bump]);
+
+  const onMultiCopy = useCallback(() => {
+    const copiedComps = [...multiSelect]
+      .filter(id => G.components.has(id))
+      .map(id => ({ ...G.components.get(id) }));
+    const copiedWires = [...multiSelect]
+      .filter(id => G.wires.has(id))
+      .map(id => ({ ...G.wires.get(id) }));
+    setClipboard({ comps: copiedComps, wires: copiedWires });
+  }, [multiSelect]);
+
+  const onMultiPaste = useCallback(() => {
+    if (!clipboard) return;
+    const idMap = new Map();
+    const newComps = [];
+    clipboard.comps.forEach(c => {
+      const nc = G.addComponent(c.type, c.x + 40, c.y + 40);
+      if (nc) { idMap.set(c.id, nc.id); newComps.push(nc); }
+    });
+    clipboard.wires.forEach(w => {
+      const fromComp = G.terminals.get(w.from);
+      const toComp = G.terminals.get(w.to);
+      if (!fromComp || !toComp) return;
+      const newFromCompId = idMap.get(fromComp.compId);
+      const newToCompId = idMap.get(toComp.compId);
+      if (!newFromCompId || !newToCompId) return;
+      const newFromComp = G.components.get(newFromCompId);
+      const newToComp = G.components.get(newToCompId);
+      if (!newFromComp || !newToComp) return;
+      const newFrom = newFromComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === fromComp.key);
+      const newTo = newToComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === toComp.key);
+      if (newFrom && newTo) G.addWire(newFrom.id, newTo.id, w.color);
+    });
+    const newSel = new Set(newComps.map(c => c.id));
+    setMultiSelect(newSel);
+    bump();
+  }, [clipboard, bump]);
+
+  const onMultiMove = useCallback((dx, dy) => {
+    const gs = 20;
+    [...multiSelect].forEach(id => {
+      const comp = G.components.get(id);
+      if (comp) G.moveComponent(id, Math.round((comp.x + dx) / gs) * gs, Math.round((comp.y + dy) / gs) * gs);
+    });
+    bump();
+  }, [multiSelect, bump]);
+
   const onWireLongPress = useCallback((wireId, fixedTermId, dragTermId, color, startX, startY) => {
     drawing.current = { rewireId: wireId, fixedTermId, dragTermId, color };
     mouse.current = { x: startX, y: startY };
@@ -559,6 +616,11 @@ export default function VoltForge() {
               setMultiSelect={setMultiSelect}
               wireTouchedRef={wireTouched}
               selectionRect={selectionRect}
+              clipboard={clipboard}
+              onMultiDelete={onMultiDelete}
+              onMultiCopy={onMultiCopy}
+              onMultiPaste={onMultiPaste}
+              onMultiMove={onMultiMove}
             />
           )}
           {currentView === 'parts' && (

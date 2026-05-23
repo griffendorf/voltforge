@@ -1,4 +1,5 @@
 import { T, CW, CH, STATE_COL } from '@/lib/voltforge/theme';
+import MultiSelectBar from '@/components/voltforge/MultiSelectBar';
 import { DEFS } from '@/lib/voltforge/definitions';
 import { G } from '@/lib/voltforge/instances';
 import { bezier } from '@/lib/voltforge/routing';
@@ -14,6 +15,7 @@ export default function CanvasView({
   onCompPress, onTermPress, setWColor, setSelected, bump,
   isRewire, onWireLongPress,
   multiSelect, setMultiSelect, wireTouchedRef, selectionRect,
+  clipboard, onMultiDelete, onMultiCopy, onMultiPaste, onMultiMove,
 }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const simHasErrors = simOn && errors?.length > 0;
@@ -505,6 +507,42 @@ export default function CanvasView({
             WIRE
           </button>
         </div>
+
+        {/* Floating multi-select toolbar */}
+        {multiSelect?.size > 0 && !selectionRect && (() => {
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          [...multiSelect].forEach(id => {
+            const comp = comps.find(c => c.id === id);
+            if (comp) {
+              minX = Math.min(minX, comp.x); minY = Math.min(minY, comp.y);
+              maxX = Math.max(maxX, comp.x + CW); maxY = Math.max(maxY, comp.y + CH);
+            } else {
+              const wire = wires.find(w => w.id === id);
+              if (wire) {
+                const tA = G.terminals.get(wire.from), tB = G.terminals.get(wire.to);
+                if (tA && tB) {
+                  minX = Math.min(minX, tA.wx, tB.wx); minY = Math.min(minY, tA.wy, tB.wy);
+                  maxX = Math.max(maxX, tA.wx, tB.wx); maxY = Math.max(maxY, tA.wy, tB.wy);
+                }
+              }
+            }
+          });
+          if (minX === Infinity) return null;
+          const screenCX = (minX + maxX) / 2 * zoom + pan.x;
+          const screenTY = minY * zoom + pan.y;
+          return (
+            <MultiSelectBar
+              screenX={screenCX}
+              screenY={screenTY}
+              count={multiSelect.size}
+              onDelete={onMultiDelete}
+              onCopy={onMultiCopy}
+              onPaste={onMultiPaste}
+              onMove={onMultiMove}
+              hasClipboard={!!clipboard}
+            />
+          );
+        })()}
 
         {showColorPicker && (
           <WireColorPicker
