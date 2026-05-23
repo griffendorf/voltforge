@@ -11,6 +11,7 @@ import Pricing from '@/pages/Pricing';
 import ThankYou from '@/pages/ThankYou';
 import AccountSettings from '@/pages/AccountSettings';
 import HVACSimulator from '@/pages/HVACSimulator';
+import WinchSimulator from '@/pages/WinchSimulator';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -38,6 +39,7 @@ const AuthenticatedApp = () => {
       <Route path="/thank-you" element={<ThankYou />} />
       <Route path="/account" element={<AccountSettings />} />
       <Route path="/hvac" element={<HVACSimulator />} />
+      <Route path="/winch" element={<WinchSimulator />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
