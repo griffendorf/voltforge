@@ -221,7 +221,7 @@ export default function VoltForge() {
     setSelectionRect({ x1: _sx, y1: _sy, x2: _sx, y2: _sy });
     setSelected(null);
     setMultiSelect(new Set());
-  }, [placing, eXY, bump, clearRubberBand]);
+  }, [placing, eXY, bump, clearRubberBand, multiSelect]);
 
   const onCanvasMouseDown = useCallback(e => {
     if (wireTouched.current) { wireTouched.current = false; return; }
@@ -234,14 +234,29 @@ export default function VoltForge() {
       return;
     }
     if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); return; }
+    // Pan canvas if something is selected (don't dismiss selection)
+    if (multiSelect.size > 0) {
+      panDragRef.current = { startClientX: e.clientX, startClientY: e.clientY, panX: panRef.current.x, panY: panRef.current.y };
+      return;
+    }
     const { x: _sx, y: _sy } = eXY(e);
     selDragRef.current = { startX: _sx, startY: _sy, currentX: _sx, currentY: _sy };
     setSelectionRect({ x1: _sx, y1: _sy, x2: _sx, y2: _sy });
     setSelected(null);
     setMultiSelect(new Set());
-  }, [placing, eXY, bump, clearRubberBand]);
+  }, [placing, eXY, bump, clearRubberBand, multiSelect]);
 
   const onGlobalMove = useCallback(e => {
+    // Single-finger pan while multiselect active
+    if (panDragRef.current && !pinchRef.current) {
+      const s = e.touches?.[0] || e;
+      const newPanX = panDragRef.current.panX + (s.clientX - panDragRef.current.startClientX);
+      const newPanY = panDragRef.current.panY + (s.clientY - panDragRef.current.startClientY);
+      panRef.current = { x: newPanX, y: newPanY };
+      setPan({ x: newPanX, y: newPanY });
+      if (e.cancelable) e.preventDefault();
+      return;
+    }
     if (e.touches?.length === 2 && pinchRef.current) {
       const [a, b] = e.touches;
       const newDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
@@ -289,6 +304,17 @@ export default function VoltForge() {
   const onGlobalUp = useCallback(e => {
     pinchRef.current = null;
     clearTimeout(lpTimer.current);
+    // End single-finger pan (tap on empty = clear selection)
+    if (panDragRef.current) {
+      const s = e.changedTouches?.[0] || e;
+      const dist = Math.hypot(
+        s.clientX - panDragRef.current.startClientX,
+        s.clientY - panDragRef.current.startClientY
+      );
+      panDragRef.current = null;
+      if (dist < 8) setMultiSelect(new Set());
+      return;
+    }
     if (selDragRef.current) {
       const sd = selDragRef.current;
       selDragRef.current = null;

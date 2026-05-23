@@ -508,7 +508,7 @@ export default function CanvasView({
           </button>
         </div>
 
-        {/* Floating multi-select toolbar */}
+        {/* Floating multi-select toolbar — clamped to viewport */}
         {multiSelect?.size > 0 && !selectionRect && (() => {
           let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
           [...multiSelect].forEach(id => {
@@ -528,12 +528,23 @@ export default function CanvasView({
             }
           });
           if (minX === Infinity) return null;
-          const screenCX = (minX + maxX) / 2 * zoom + pan.x;
-          const screenTY = minY * zoom + pan.y;
+
+          const canvasW = cvRef.current?.clientWidth || 360;
+          const canvasH = cvRef.current?.clientHeight || 600;
+          const BAR_HALF_W = 170;
+          const BAR_H = 56;
+          const GAP = 10;
+
+          const rawCX = (minX + maxX) / 2 * zoom + pan.x;
+          const rawTY = minY * zoom + pan.y - BAR_H - GAP;
+
+          const clampedX = Math.max(BAR_HALF_W + GAP, Math.min(canvasW - BAR_HALF_W - GAP, rawCX));
+          const clampedY = Math.max(GAP, Math.min(canvasH - BAR_H - GAP, rawTY));
+
           return (
             <MultiSelectBar
-              screenX={screenCX}
-              screenY={screenTY}
+              barX={clampedX}
+              barY={clampedY}
               count={multiSelect.size}
               onDelete={onMultiDelete}
               onCopy={onMultiCopy}

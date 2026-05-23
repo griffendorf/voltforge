@@ -1,41 +1,46 @@
 import { T } from '@/lib/voltforge/theme';
 
-const BTN = ({ onClick, children, color, title }) => (
+const ActionBtn = ({ icon, label, onClick, color, disabled }) => (
   <button
     onMouseDown={e => e.stopPropagation()}
     onTouchStart={e => { e.stopPropagation(); e.preventDefault(); }}
-    onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onClick(); }}
-    onClick={e => { e.stopPropagation(); onClick(); }}
-    title={title}
+    onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); if (!disabled) onClick(); }}
+    onClick={e => { e.stopPropagation(); if (!disabled) onClick(); }}
     style={{
-      padding: '0 13px', height: 36, minHeight: 0, minWidth: 0, borderRadius: 8,
-      border: `1px solid ${(color || T.blue)}44`,
-      background: `${(color || T.blue)}18`,
-      color: color || T.blue, fontSize: 11, cursor: 'pointer',
-      fontFamily: 'JetBrains Mono, monospace', fontWeight: 700,
-      display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: 2, padding: '0 14px', height: '100%', minHeight: 0, minWidth: 0,
+      border: 'none', background: 'transparent',
+      color: disabled ? '#444' : (color || '#e0e0e0'),
+      cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1,
+      borderRadius: 0,
     }}>
-    {children}
+    <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>
+    <span style={{ fontSize: 9, letterSpacing: '0.04em', fontFamily: 'JetBrains Mono, monospace' }}>{label}</span>
   </button>
 );
 
-const NUDGE_BTN = ({ onClick, label }) => (
+const NudgeBtn = ({ label, onClick }) => (
   <button
     onMouseDown={e => e.stopPropagation()}
     onTouchStart={e => { e.stopPropagation(); e.preventDefault(); }}
     onTouchEnd={e => { e.stopPropagation(); e.preventDefault(); onClick(); }}
     onClick={e => { e.stopPropagation(); onClick(); }}
     style={{
-      width: 28, height: 28, minHeight: 0, minWidth: 0, borderRadius: 6,
-      border: `1px solid ${T.cyan}33`, background: `${T.cyan}12`,
-      color: T.cyan, fontSize: 13, cursor: 'pointer', display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
+      width: 32, height: 32, borderRadius: 6, border: 'none',
+      background: 'rgba(255,255,255,0.07)',
+      color: '#b0b0b0', fontSize: 15, cursor: 'pointer',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: 0, minWidth: 0,
     }}>
     {label}
   </button>
 );
 
-export default function MultiSelectBar({ screenX, screenY, count, onDelete, onCopy, onPaste, onMove, hasClipboard }) {
+const Divider = () => (
+  <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
+);
+
+export default function MultiSelectBar({ barX, barY, count, onDelete, onCopy, onPaste, onMove, hasClipboard }) {
   if (!count) return null;
 
   return (
@@ -44,40 +49,52 @@ export default function MultiSelectBar({ screenX, screenY, count, onDelete, onCo
       onTouchStart={e => e.stopPropagation()}
       style={{
         position: 'absolute',
-        left: screenX,
-        top: screenY - 52,
+        left: barX,
+        top: barY,
         transform: 'translateX(-50%)',
-        zIndex: 100,
-        display: 'flex', alignItems: 'center', gap: 6,
-        padding: '6px 10px',
-        background: 'rgba(7,16,28,0.95)',
-        border: `1px solid ${T.b2}`,
-        borderRadius: 12,
-        boxShadow: `0 4px 24px rgba(0,0,0,0.6), 0 0 0 1px ${T.blue}22`,
+        zIndex: 200,
+        height: 56,
+        display: 'flex', alignItems: 'center',
+        background: '#1c1c1e',
+        borderRadius: 14,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.06) inset',
+        border: '1px solid rgba(255,255,255,0.1)',
+        overflow: 'hidden',
         animation: 'popIn .15s ease both',
         pointerEvents: 'all',
+        userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
       }}>
-      {/* Count badge */}
-      <span style={{ fontSize: 9, color: T.dim, paddingRight: 4, borderRight: `1px solid ${T.b1}`, marginRight: 2 }}>
-        {count} selected
-      </span>
 
-      {/* Move nudge */}
-      <div style={{ display: 'flex', gap: 2 }}>
-        <NUDGE_BTN label="↑" onClick={() => onMove(0, -20)} />
-        <NUDGE_BTN label="↓" onClick={() => onMove(0, 20)} />
-        <NUDGE_BTN label="←" onClick={() => onMove(-20, 0)} />
-        <NUDGE_BTN label="→" onClick={() => onMove(20, 0)} />
+      {/* Count badge */}
+      <div style={{
+        padding: '0 12px', height: '100%', display: 'flex', alignItems: 'center',
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+      }}>
+        <span style={{ fontSize: 10, color: '#888', fontFamily: 'JetBrains Mono, monospace', whiteSpace: 'nowrap' }}>
+          {count} sel
+        </span>
       </div>
 
-      <div style={{ width: 1, height: 24, background: T.b1 }} />
+      {/* Nudge cluster */}
+      <div style={{ display: 'flex', gap: 3, padding: '0 10px', alignItems: 'center', height: '100%' }}>
+        <NudgeBtn label="↑" onClick={() => onMove(0, -20)} />
+        <NudgeBtn label="↓" onClick={() => onMove(0, 20)} />
+        <NudgeBtn label="←" onClick={() => onMove(-20, 0)} />
+        <NudgeBtn label="→" onClick={() => onMove(20, 0)} />
+      </div>
 
-      <BTN onClick={onCopy} title="Copy selection">📋 Copy</BTN>
-      {hasClipboard && <BTN onClick={onPaste} color={T.green} title="Paste clipboard">⎋ Paste</BTN>}
+      <Divider />
 
-      <div style={{ width: 1, height: 24, background: T.b1 }} />
+      <ActionBtn icon="📋" label="COPY" onClick={onCopy} />
 
-      <BTN onClick={onDelete} color={T.red} title="Delete selection">✕ Delete</BTN>
+      {hasClipboard && <>
+        <ActionBtn icon="⎋" label="PASTE" onClick={onPaste} color={T.green} />
+      </>}
+
+      <Divider />
+
+      <ActionBtn icon="✕" label="DELETE" onClick={onDelete} color="#ff4444" />
     </div>
   );
 }
