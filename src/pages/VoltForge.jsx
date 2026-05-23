@@ -61,6 +61,8 @@ export default function VoltForge() {
   const autoSnapRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [multiSelect, setMultiSelect] = useState(new Set());
+  const [selectionRect, setSelectionRect] = useState(null);
   const { tier } = useSubscription();
 
   // Orientation detection
@@ -91,6 +93,7 @@ export default function VoltForge() {
   const compTouched = useRef(false);
   const pinchRef = useRef(null);
   const panDragRef = useRef(null);
+  const selDragRef = useRef(null);
 
   const view = ROUTE_TO_VIEW[location.pathname] || 'canvas';
 
@@ -209,8 +212,12 @@ export default function VoltForge() {
       setPlacing(null);
       return;
     }
-    if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); }
+    if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); return; }
+    const { x: _sx, y: _sy } = eXY(e);
+    selDragRef.current = { startX: _sx, startY: _sy, currentX: _sx, currentY: _sy };
+    setSelectionRect({ x1: _sx, y1: _sy, x2: _sx, y2: _sy });
     setSelected(null);
+    setMultiSelect(new Set());
   }, [placing, eXY, bump, clearRubberBand]);
 
   const onCanvasMouseDown = useCallback(e => {
@@ -222,8 +229,12 @@ export default function VoltForge() {
       setPlacing(null);
       return;
     }
-    if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); }
+    if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); return; }
+    const { x: _sx, y: _sy } = eXY(e);
+    selDragRef.current = { startX: _sx, startY: _sy, currentX: _sx, currentY: _sy };
+    setSelectionRect({ x1: _sx, y1: _sy, x2: _sx, y2: _sy });
     setSelected(null);
+    setMultiSelect(new Set());
   }, [placing, eXY, bump, clearRubberBand]);
 
   const onGlobalMove = useCallback(e => {
@@ -247,6 +258,14 @@ export default function VoltForge() {
       if (e.cancelable) e.preventDefault();
       return;
     }
+    if (selDragRef.current) {
+      const { x, y } = eXY(e);
+      selDragRef.current.currentX = x;
+      selDragRef.current.currentY = y;
+      setSelectionRect({ x1: selDragRef.current.startX, y1: selDragRef.current.startY, x2: x, y2: y });
+      if (e.cancelable) e.preventDefault();
+      return;
+    }
     if (!drawing.current) return;
     const { x, y } = eXY(e);
     mouse.current = { x, y };
@@ -266,6 +285,28 @@ export default function VoltForge() {
   const onGlobalUp = useCallback(e => {
     pinchRef.current = null;
     clearTimeout(lpTimer.current);
+    if (selDragRef.current) {
+      const sd = selDragRef.current;
+      selDragRef.current = null;
+      setSelectionRect(null);
+      const dist = Math.hypot(sd.currentX - sd.startX, sd.currentY - sd.startY);
+      if (dist > 8) {
+        const rx1 = Math.min(sd.startX, sd.currentX);
+        const ry1 = Math.min(sd.startY, sd.currentY);
+        const rx2 = Math.max(sd.startX, sd.currentX);
+        const ry2 = Math.max(sd.startY, sd.currentY);
+        const newSel = new Set();
+        [...G.components.values()].forEach(comp => {
+          if (comp.x < rx2 && comp.x + CW > rx1 && comp.y < ry2 && comp.y + CH > ry1) {
+            newSel.add(comp.id);
+          }
+        });
+        setMultiSelect(newSel);
+      } else {
+        setMultiSelect(new Set());
+      }
+      return;
+    }
     if (!drawing.current) return;
     const snap = snapRef.current;
     if (drawing.current.rewireId) {
@@ -495,6 +536,8 @@ export default function VoltForge() {
               setSelected={setSelected}
               bump={bump}
               isRewire={!!drawing.current?.rewireId}
+              multiSelect={multiSelect}
+              selectionRect={selectionRect}
             />
           )}
           {currentView === 'parts' && (

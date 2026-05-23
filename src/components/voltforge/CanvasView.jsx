@@ -13,6 +13,7 @@ export default function CanvasView({
   onCanvasTouchStart, onCanvasMouseDown,
   onCompPress, onTermPress, setWColor, setSelected, bump,
   isRewire, onWireLongPress,
+  multiSelect, selectionRect,
 }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const simHasErrors = simOn && errors?.length > 0;
@@ -172,6 +173,23 @@ export default function CanvasView({
             </g>
           </svg>
 
+          {/* Selection rectangle overlay */}
+          {selectionRect && (
+          <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
+                        pointerEvents: 'none', zIndex: 6, overflow: 'visible' }}>
+            <rect
+              x={Math.min(selectionRect.x1, selectionRect.x2)}
+              y={Math.min(selectionRect.y1, selectionRect.y2)}
+              width={Math.abs(selectionRect.x2 - selectionRect.x1)}
+              height={Math.abs(selectionRect.y2 - selectionRect.y1)}
+              fill="rgba(0,212,255,0.06)"
+              stroke="#00d4ff"
+              strokeWidth={1.5 / zoom}
+              strokeDasharray={`${6 / zoom} ${4 / zoom}`}
+            />
+          </svg>
+          )}
+
           {/* Components */}
           {comps.map(comp => {
             const def = DEFS[comp.type];
@@ -186,6 +204,7 @@ export default function CanvasView({
               ? (bh.state === 'ON' ? T.green : bh.state === 'ACTIVE' ? T.cyan
                 : bh.state === 'FAULT' ? T.red : null) : null;
             const isAiHL = aiHL.compIds.includes(comp.id);
+            const isMultiSel = multiSelect?.has(comp.id);
             const aiHLCol = { info: T.blue, warning: T.amber, error: T.red, success: T.green }[aiHL.type] || T.blue;
 
             // Sim glow effects
@@ -196,12 +215,14 @@ export default function CanvasView({
             const hotColor = '#ff6b00';
             const errGlowColor = T.red;
 
-            const borderColor = isSel ? T.blue
+            const borderColor = isMultiSel ? T.cyan
+              : isSel ? T.blue
               : isLit ? litColor
               : isErrorComp ? errGlowColor
               : isHotComp ? hotColor
               : isAiHL ? aiHLCol : simBCol || issColor || T.b2;
-            const glowColor = isSel ? T.blue
+            const glowColor = isMultiSel ? T.cyan
+              : isSel ? T.blue
               : isLit ? litColor
               : isErrorComp ? errGlowColor
               : isHotComp ? hotColor
@@ -212,7 +233,7 @@ export default function CanvasView({
                 data-comp-id={comp.id}
                 style={{
                   position: 'absolute', left: comp.x, top: comp.y,
-                  width: CW, height: CH, zIndex: isSel ? 20 : 10,
+                  width: CW, height: CH, zIndex: isMultiSel ? 15 : isSel ? 20 : 10,
                   touchAction: 'none', animation: 'popIn .2s ease both',
                 }}
                 onMouseDown={e => onCompPress(comp.id, e)}
@@ -231,7 +252,9 @@ export default function CanvasView({
                     ? 'radial-gradient(ellipse at center, #1a0000 0%, #0d0808 100%)'
                     : T.card,
                   border: `1.5px solid ${borderColor}`,
-                  boxShadow: isSel
+                  boxShadow: isMultiSel
+                    ? `0 0 0 2px ${T.cyan}55, 0 0 16px ${T.cyan}33`
+                    : isSel
                     ? `0 0 0 2.5px ${T.blue}44, 0 0 20px ${T.blue}22`
                     : isHotComp
                     ? `0 0 0 2px ${hotColor}66, 0 0 18px ${hotColor}55, 0 0 35px ${hotColor}22`
