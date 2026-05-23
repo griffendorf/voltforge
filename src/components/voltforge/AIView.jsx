@@ -150,8 +150,20 @@ USER QUESTION: ${text}`;
           const buildCmd = JSON.parse(buildMatch[1]);
           if (buildCmd.action === 'build') {
             const placedComps = new Map();
+
+            // Offset new circuit so it doesn't overlap existing components
+            let offsetX = 0;
+            const existingComps = [...G.components.values()];
+            if (existingComps.length > 0) {
+              const existingMaxX = Math.max(...existingComps.map(c => c.x + 140));
+              const newMinX = buildCmd.components.length > 0
+                ? Math.min(...buildCmd.components.map(c => c.x || 60))
+                : 60;
+              offsetX = existingMaxX + 100 - newMinX;
+            }
+
             buildCmd.components.forEach(compSpec => {
-              const comp = G.addComponent(compSpec.type, compSpec.x, compSpec.y);
+              const comp = G.addComponent(compSpec.type, (compSpec.x || 60) + offsetX, compSpec.y || 200);
               if (comp) {
                 if (compSpec.rotation) {
                   for (let i = 0; i < compSpec.rotation / 90; i++) {
