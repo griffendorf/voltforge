@@ -41,7 +41,7 @@ const ROUTE_TO_VIEW = {
 export default function VoltForge() {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const [ver, setVer] = useState(0);
   const [placing, setPlacing] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -54,14 +54,32 @@ export default function VoltForge() {
   const [projId, setProjId] = useState(() => uid('p'));
   const [aiHL, setAiHL] = useState({ compIds: [], type: 'info' });
   const [aiMsgs, setAiMsgs] = useState([{
-    role:'assistant',
-    content:"👋 I'm **Volt·AI**! I can analyze your circuit OR build one for you! Just describe what you need (e.g., 'Add a battery and LED with a resistor'), and I'll place components and connect wires automatically.",
+    role: 'assistant',
+    content: "👋 I'm **Volt·AI**! I can analyze your circuit OR build one for you! Just describe what you need (e.g., 'Add a battery and LED with a resistor'), and I'll place components and connect wires automatically.",
   }]);
   const [autoSnap, setAutoSnap] = useState(false);
   const autoSnapRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const { tier } = useSubscription();
+
+  // Orientation detection
+  const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
+  useEffect(() => {
+    const check = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    window.addEventListener('resize', check);
+    window.addEventListener('orientationchange', check);
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', check);
+    };
+  }, []);
+
+  // Zoom/pan state
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
 
   const rbSvgRef = useRef(null);
   const drawing = useRef(null);
@@ -74,7 +92,6 @@ export default function VoltForge() {
   const pinchRef = useRef(null);
   const panDragRef = useRef(null);
 
-  // Determine current view from route
   const view = ROUTE_TO_VIEW[location.pathname] || 'canvas';
 
   const setView = useCallback((newView) => {
@@ -99,16 +116,14 @@ export default function VoltForge() {
     if (!svg) return;
     if (!drawOriginTerm) { svg.style.display = 'none'; return; }
     svg.style.display = 'block';
-
     const col = snapTgt?.valid ? T.green : snapTgt ? T.red : isRewire ? T.amber : wColorVal;
     let d;
     if (snapTgt) {
       d = bezier(drawOriginTerm.wx, drawOriginTerm.wy, drawOriginTerm.dir,
-                 snapTgt.term.wx, snapTgt.term.wy, snapTgt.term.dir);
+        snapTgt.term.wx, snapTgt.term.wy, snapTgt.term.dir);
     } else {
       d = rubber(drawOriginTerm.wx, drawOriginTerm.wy, drawOriginTerm.dir, mx, my);
     }
-
     const [glow, line, ring] = svg.children;
     glow.setAttribute('d', d); glow.setAttribute('stroke', col);
     line.setAttribute('d', d); line.setAttribute('stroke', col);
@@ -232,7 +247,6 @@ export default function VoltForge() {
       if (e.cancelable) e.preventDefault();
       return;
     }
-
     if (!drawing.current) return;
     const { x, y } = eXY(e);
     mouse.current = { x, y };
@@ -243,11 +257,9 @@ export default function VoltForge() {
       ? drawing.current.fixedTermId
       : drawing.current.termId;
     snapRef.current = G.findSnap(x, y, excludeCompId, excludeTermId, drawing.current.rewireId);
-
     const originTermId = drawing.current.rewireId ? drawing.current.fixedTermId : drawing.current.termId;
     const originTerm = G.terminals.get(originTermId);
     updateRubberBand(originTerm, x, y, snapRef.current, !!drawing.current.rewireId, wColor);
-
     if (e.cancelable) e.preventDefault();
   }, [eXY, updateRubberBand, wColor]);
 
@@ -255,9 +267,7 @@ export default function VoltForge() {
     pinchRef.current = null;
     clearTimeout(lpTimer.current);
     if (!drawing.current) return;
-
     const snap = snapRef.current;
-
     if (drawing.current.rewireId) {
       if (snap?.valid) {
         G.removeWire(drawing.current.rewireId);
@@ -267,7 +277,6 @@ export default function VoltForge() {
     } else {
       if (snap?.valid) { G.addWire(drawing.current.termId, snap.term.id, wColor); bump(); }
     }
-
     if (autoSnapRef.current && !drawing.current?.rewireId && snap?.valid) {
       const restartTermId = drawing.current?.termId;
       const restartCompId = drawing.current?.compId;
@@ -280,7 +289,6 @@ export default function VoltForge() {
       }
       return;
     }
-
     drawing.current = null;
     snapRef.current = null;
     clearRubberBand();
@@ -331,7 +339,6 @@ export default function VoltForge() {
     if (placing) return;
     e.stopPropagation(); e.preventDefault();
     const { x, y } = eXY(e);
-
     if (drawing.current && !drawing.current.rewireId && termId !== drawing.current.termId) {
       G.addWire(drawing.current.termId, termId, wColor);
       bump();
@@ -347,7 +354,6 @@ export default function VoltForge() {
       setSelected(null);
       return;
     }
-
     drawing.current = { termId, compId };
     mouse.current = { x, y };
     snapRef.current = null;
@@ -366,17 +372,11 @@ export default function VoltForge() {
     const s0 = gXY(e), ox = comp.x, oy = comp.y;
     let moved = false;
     lpActive.current = false;
-
     clearTimeout(lpTimer.current);
     lpTimer.current = setTimeout(() => {
-      if (!moved) {
-        lpActive.current = true;
-        setSelected(compId);
-      }
+      if (!moved) { lpActive.current = true; setSelected(compId); }
     }, 480);
-
     const compEl = cvRef.current?.querySelector(`[data-comp-id="${compId}"]`);
-
     const onM = ev => {
       const c = gXY(ev);
       const dist = Math.hypot(c.x - s0.x, c.y - s0.y);
@@ -429,152 +429,150 @@ export default function VoltForge() {
     : simStatus === 'open' ? T.amber
       : simStatus === 'short' ? T.red : T.sub;
 
-  // Zoom/pan state
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const zoomRef = useRef(1);
-  const panRef = useRef({ x: 0, y: 0 });
+  const onTabReset = useCallback((tabId) => {
+    if (tabId === 'ai') setAiHL({ compIds: [], type: 'info' });
+    else if (tabId === 'info') setSelected(null);
+    else if (tabId === 'canvas') {
+      zoomRef.current = 1; panRef.current = { x: 0, y: 0 };
+      setZoom(1); setPan({ x: 0, y: 0 }); setSelected(null);
+    } else if (tabId === 'parts') {
+      if (placing) setPlacing(null);
+    }
+  }, [placing]);
+
+  const onBuildComplete = useCallback((placedComps) => {
+    if (!placedComps.length) return;
+    const PAD = 80;
+    const xs = placedComps.map(c => c.x);
+    const ys = placedComps.map(c => c.y);
+    const minX = Math.min(...xs) - PAD;
+    const minY = Math.min(...ys) - PAD;
+    const maxX = Math.max(...xs) + 120 + PAD;
+    const maxY = Math.max(...ys) + 60 + PAD;
+    const cw = cvRef.current?.clientWidth || 360;
+    const ch = cvRef.current?.clientHeight || 600;
+    const newZoom = Math.min(1.2, Math.max(0.2, Math.min(cw / (maxX - minX), ch / (maxY - minY))));
+    const newPanX = (cw - (maxX + minX) * newZoom) / 2;
+    const newPanY = (ch - (maxY + minY) * newZoom) / 2;
+    zoomRef.current = newZoom;
+    panRef.current = { x: newPanX, y: newPanY };
+    setZoom(newZoom);
+    setPan({ x: newPanX, y: newPanY });
+  }, []);
+
+  const headerEl = (
+    <VFHeader
+      simOn={simOn} simSnap={snap}
+      simStatus={simStatus} simCol={simCol}
+      comps={comps} wires={wires} errors={errors} warnings={warnings}
+      autoSnap={autoSnap} setAutoSnap={setAutoSnap}
+      canUndo={canUndo} doUndo={doUndo}
+      zoom={zoom}
+      onZoomIn={() => { const nz = Math.min(4, zoomRef.current * 1.25); zoomRef.current = nz; setZoom(nz); }}
+      onZoomOut={() => { const nz = Math.max(0.25, zoomRef.current / 1.25); zoomRef.current = nz; setZoom(nz); }}
+      onZoomReset={() => { zoomRef.current = 1; panRef.current = { x: 0, y: 0 }; setZoom(1); setPan({ x: 0, y: 0 }); }}
+    />
+  );
+
+  const contentEl = (
+    <SlideTransition activeView={view}>
+      {(currentView) => (
+        <div style={{ flex: 1, overflow: 'hidden', position: 'relative', touchAction: 'none', height: '100%' }}>
+          {currentView === 'canvas' && (
+            <CanvasView
+              cvRef={cvRef} rbSvgRef={rbSvgRef}
+              comps={comps} wires={wires}
+              placing={placing} isDrawing={isDrawing} selected={selected}
+              wColor={wColor} snap={snap} simOn={simOn} errors={errors}
+              issuesByComp={issuesByComp} aiHL={aiHL}
+              zoom={zoom} pan={pan}
+              onCanvasTouchStart={onCanvasTouchStart}
+              onCanvasMouseDown={onCanvasMouseDown}
+              onCompPress={onCompPress}
+              onWireLongPress={onWireLongPress}
+              onTermPress={onTermPress}
+              setWColor={setWColor}
+              setSelected={setSelected}
+              bump={bump}
+              isRewire={!!drawing.current?.rewireId}
+            />
+          )}
+          {currentView === 'parts' && (
+            <PartsView
+              placing={placing} setPlacing={setPlacing}
+              activeCat={activeCat} setActiveCat={setActiveCat}
+              setView={setView}
+            />
+          )}
+          {currentView === 'sim' && (
+            <SimView
+              simOn={simOn} simPaused={simPaused} snap={snap}
+              simStatus={simStatus} simCol={simCol} comps={comps}
+              toggleSim={toggleSim} togglePause={togglePause} stepOnce={stepOnce}
+              setSelected={setSelected} setView={setView}
+            />
+          )}
+          {currentView === 'info' && (
+            <InfoView
+              issues={issues} errors={errors} warnings={warnings}
+              comps={comps} stats={stats} selComp={selComp} snap={snap}
+              selected={selected} setSelected={setSelected}
+              wColor={wColor} setWColor={setWColor} bump={bump}
+            />
+          )}
+          {currentView === 'ai' && (
+            <AIView
+              snap={snap}
+              setAiHL={setAiHL}
+              setView={setView}
+              bump={bump}
+              aiMsgs={aiMsgs}
+              setAiMsgs={setAiMsgs}
+              onBuildComplete={onBuildComplete}
+            />
+          )}
+          {currentView === 'save' && (
+            <SaveView
+              projName={projName} setProjName={setProjName}
+              projId={projId} setProjId={setProjId}
+              bump={bump} setSimOn={setSimOn} setSimSnap={setSimSnap}
+              setVer={setVer} setView={setView} setSelected={setSelected}
+            />
+          )}
+        </div>
+      )}
+    </SlideTransition>
+  );
 
   return (
-    <div
-      style={{
-        display: 'flex', flexDirection: 'column',
-        height: '100dvh',
-        minHeight: '-webkit-fill-available',
-        background: T.bg, color: T.text,
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: 'clamp(11px, 2.5vw, 13px)',
-        overflow: 'hidden',
-        userSelect: 'none',
-        WebkitTapHighlightColor: 'transparent',
-      }}
-    >
-      <VFHeader
-        simOn={simOn} simSnap={snap}
-        simStatus={simStatus} simCol={simCol}
-        comps={comps} wires={wires} errors={errors} warnings={warnings}
-        autoSnap={autoSnap} setAutoSnap={setAutoSnap}
-        canUndo={canUndo} doUndo={doUndo}
-        zoom={zoom}
-        onZoomIn={() => {
-          const nz = Math.min(4, zoomRef.current * 1.25);
-          zoomRef.current = nz; setZoom(nz);
-        }}
-        onZoomOut={() => {
-          const nz = Math.max(0.25, zoomRef.current / 1.25);
-          zoomRef.current = nz; setZoom(nz);
-        }}
-        onZoomReset={() => {
-          zoomRef.current = 1; panRef.current = { x: 0, y: 0 };
-          setZoom(1); setPan({ x: 0, y: 0 });
-        }}
-      />
-
-      <SlideTransition activeView={view}>
-        {(currentView) => (
-          <div
-            style={{ flex: 1, overflow: 'hidden', position: 'relative', touchAction: 'none', height: '100%' }}
-          >
-            {currentView === 'canvas' && (
-              <CanvasView
-                cvRef={cvRef} rbSvgRef={rbSvgRef}
-                comps={comps} wires={wires}
-                placing={placing} isDrawing={isDrawing} selected={selected}
-                wColor={wColor} snap={snap} simOn={simOn} errors={errors}
-                issuesByComp={issuesByComp} aiHL={aiHL}
-                zoom={zoom} pan={pan}
-                onCanvasTouchStart={onCanvasTouchStart}
-                onCanvasMouseDown={onCanvasMouseDown}
-                onCompPress={onCompPress}
-                onWireLongPress={onWireLongPress}
-                onTermPress={onTermPress}
-                setWColor={setWColor}
-                setSelected={setSelected}
-                bump={bump}
-                isRewire={!!drawing.current?.rewireId}
-              />
-            )}
-            {currentView === 'parts' && (
-              <PartsView
-                placing={placing} setPlacing={setPlacing}
-                activeCat={activeCat} setActiveCat={setActiveCat}
-                setView={setView}
-              />
-            )}
-            {currentView === 'sim' && (
-              <SimView
-                simOn={simOn} simPaused={simPaused} snap={snap}
-                simStatus={simStatus} simCol={simCol} comps={comps}
-                toggleSim={toggleSim} togglePause={togglePause} stepOnce={stepOnce}
-                setSelected={setSelected} setView={setView}
-              />
-            )}
-            {currentView === 'info' && (
-              <InfoView
-                issues={issues} errors={errors} warnings={warnings}
-                comps={comps} stats={stats} selComp={selComp} snap={snap}
-                selected={selected} setSelected={setSelected}
-                wColor={wColor} setWColor={setWColor} bump={bump}
-              />
-            )}
-            {currentView === 'ai' && (
-              <AIView 
-                snap={snap} 
-                setAiHL={setAiHL} 
-                setView={setView} 
-                bump={bump}
-                aiMsgs={aiMsgs}
-                setAiMsgs={setAiMsgs}
-                onBuildComplete={(placedComps) => {
-                  if (!placedComps.length) return;
-                  const PAD = 80;
-                  const xs = placedComps.map(c => c.x);
-                  const ys = placedComps.map(c => c.y);
-                  const minX = Math.min(...xs) - PAD;
-                  const minY = Math.min(...ys) - PAD;
-                  const maxX = Math.max(...xs) + 120 + PAD;
-                  const maxY = Math.max(...ys) + 60 + PAD;
-                  const cw = cvRef.current?.clientWidth || 360;
-                  const ch = cvRef.current?.clientHeight || 600;
-                  const newZoom = Math.min(1.2, Math.max(0.2, Math.min(cw / (maxX - minX), ch / (maxY - minY))));
-                  const newPanX = (cw - (maxX + minX) * newZoom) / 2;
-                  const newPanY = (ch - (maxY + minY) * newZoom) / 2;
-                  zoomRef.current = newZoom;
-                  panRef.current = { x: newPanX, y: newPanY };
-                  setZoom(newZoom);
-                  setPan({ x: newPanX, y: newPanY });
-                }}
-              />
-            )}
-            {currentView === 'save' && (
-              <SaveView
-                projName={projName} setProjName={setProjName}
-                projId={projId} setProjId={setProjId}
-                bump={bump} setSimOn={setSimOn} setSimSnap={setSimSnap}
-                setVer={setVer} setView={setView} setSelected={setSelected}
-              />
-            )}
+    <div style={{
+      display: 'flex',
+      flexDirection: isLandscape ? 'row' : 'column',
+      height: '100dvh',
+      minHeight: '-webkit-fill-available',
+      background: T.bg, color: T.text,
+      fontFamily: "'JetBrains Mono', monospace",
+      fontSize: 'clamp(11px, 2.5vw, 13px)',
+      overflow: 'hidden',
+      userSelect: 'none',
+      WebkitTapHighlightColor: 'transparent',
+    }}>
+      {isLandscape ? (
+        <>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+            {headerEl}
+            {contentEl}
           </div>
-        )}
-      </SlideTransition>
-
+          <VFBottomNav view={view} setView={setView} onTabReset={onTabReset} isLandscape />
+        </>
+      ) : (
+        <>
+          {headerEl}
+          {contentEl}
+          <VFBottomNav view={view} setView={setView} onTabReset={onTabReset} />
+        </>
+      )}
       {showUpgrade && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
-      <VFBottomNav
-        view={view}
-        setView={setView}
-        onTabReset={(tabId) => {
-          if (tabId === 'ai') {
-            setAiHL({ compIds: [], type: 'info' });
-          } else if (tabId === 'info') {
-            setSelected(null);
-          } else if (tabId === 'canvas') {
-            zoomRef.current = 1; panRef.current = { x: 0, y: 0 };
-            setZoom(1); setPan({ x: 0, y: 0 }); setSelected(null);
-          } else if (tabId === 'parts') {
-            if (placing) setPlacing(null);
-          }
-        }}
-      />
     </div>
   );
 }
