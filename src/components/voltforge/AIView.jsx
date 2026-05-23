@@ -72,7 +72,16 @@ BUILD FORMAT — respond with this exact structure:
 GROUND RULE (CRITICAL): Every circuit MUST have a complete return path. Connect EVERY load's negative terminal back to battery negative with a BLACK (#111111) wire. No component should be isolated (0 wires). Verify every component has at least 2 wires before finishing.
 
 REAL-WORLD CIRCUIT PATTERNS:
-WINCH (12V automotive): battery → fuse(high-amp 100A+) → relay_forward + relay_reverse (H-bridge) → motor. Control: switch_ triggers relay coils. Red=battery+, Black=ground, Yellow=reverse leg, Blue=control signal, Purple=relay coil.
+WINCH (12V automotive — EXACT H-BRIDGE): Use 4 relays (relay_fwd1, relay_fwd2, relay_rev1, relay_rev2) forming a full H-bridge solenoid pack.
+  Power path: battery:pos → fuse(150A, label fuse_main):in → fuse_main:out → relay_fwd1:coil1(BAT+) AND relay_rev1:coil1(BAT+).
+  Battery neg → ground bus → relay_fwd2:coil2, relay_rev2:coil2, motor:neg, all coil negatives.
+  Forward path when F-coils energized: current flows battery+ → motor:pos → motor:neg → battery−.
+  Reverse path when R-coils energized: current flows battery+ → motor:neg → motor:pos → battery−.
+  Control: battery:pos → fuse(30A, label fuse_ctrl) → switch_(rocker, label rocker):in. rocker:out → relay_fwd1:coil1 + relay_fwd2:coil1 (forward energize) AND led(green):an → resistor(470ohm) → ground. rocker second out → relay_rev1:coil1 + relay_rev2:coil1 (reverse) AND led(red):an → resistor → ground.
+  All solenoid coil negatives back to ground/battery neg with BLACK wire.
+  Wire colors: RED=#ff3333 bat+, BLACK=#111111 ground/neg, YELLOW=#ffd700 control signal, GREEN=#39ff7a forward path, BLUE=#3b82f6 reverse path, PURPLE=#a855f7 relay coil.
+  Interlock: forward and reverse relay coils must NEVER be simultaneously energized — wire interlocks using NC contacts if needed.
+  Always place 150A main fuse on bat+ line immediately after battery. 30A control fuse on switched +12V before rocker.
 EVACUATION/FIRE ALARM: source → breaker → trigger switch_ (or sensor) → relay → buzzer + bulb in parallel. LED indicator for status. Red=power, Blue=alarm output, Green=status/safe.
 MOTOR SPEED CONTROL: source → fuse → potmeter → motor. Add NPN transistor for higher current.
 MOTOR REVERSING: source → fuse → relay1(forward) + relay2(reverse) → motor. Interlock: relay1-sw prevents relay2 energizing simultaneously.
