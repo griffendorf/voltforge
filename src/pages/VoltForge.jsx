@@ -66,9 +66,9 @@ export default function VoltForge() {
   const { tier } = useSubscription();
 
   // Orientation detection
-  const [isLandscape, setIsLandscape] = useState(() => window.innerWidth > window.innerHeight);
+  const [isLandscape, setIsLandscape] = useState(() => window.screen.width > window.screen.height);
   useEffect(() => {
-    const check = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    const check = () => setIsLandscape(window.screen.width > window.screen.height);
     window.addEventListener('resize', check);
     window.addEventListener('orientationchange', check);
     return () => {
