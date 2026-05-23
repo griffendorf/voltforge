@@ -10,6 +10,7 @@ import VoltForgeRoutes from '@/lib/VoltForgeRoutes';
 import Pricing from '@/pages/Pricing';
 import ThankYou from '@/pages/ThankYou';
 import AccountSettings from '@/pages/AccountSettings';
+import HVACSimulator from '@/pages/HVACSimulator';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -36,6 +37,7 @@ const AuthenticatedApp = () => {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/thank-you" element={<ThankYou />} />
       <Route path="/account" element={<AccountSettings />} />
+      <Route path="/hvac" element={<HVACSimulator />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
