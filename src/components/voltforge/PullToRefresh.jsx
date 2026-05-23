@@ -13,6 +13,9 @@ export default function PullToRefresh({ onRefresh, children, refreshKey }) {
 
   const handleTouchStart = useCallback((e) => {
     if (e.touches.length !== 1) return;
+    // Don't interfere with input/textarea focus (keyboard)
+    const tag = e.target?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
     const scrollTop = containerRef.current?.scrollTop ?? 0;
     if (scrollTop > 0) return;
     
