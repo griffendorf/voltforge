@@ -1,0 +1,65 @@
+{
+  "name": "AgentMemory",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "learning",
+        "admin_config",
+        "iteration",
+        "pattern"
+      ],
+      "title": "Mode"
+    },
+    "input_summary": {
+      "type": "string",
+      "title": "Input Summary"
+    },
+    "output_summary": {
+      "type": "string",
+      "title": "Output Summary"
+    },
+    "confidence_score": {
+      "type": "number",
+      "title": "Confidence Score",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "validation_status": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "uncertain"
+      ],
+      "title": "Validation Status"
+    },
+    "failure_reason": {
+      "type": "string",
+      "title": "Failure Reason"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags"
+    },
+    "iteration_count": {
+      "type": "number",
+      "title": "Iteration Count",
+      "default": 1
+    },
+    "notes": {
+      "type": "string",
+      "title": "Optimization Notes"
+    }
+  },
+  "required": [
+    "mode",
+    "input_summary",
+    "confidence_score",
+    "validation_status"
+  ]
+}
