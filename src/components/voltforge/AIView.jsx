@@ -61,6 +61,7 @@ BUILD RULES (follow every time):
 4. Verify polarity on all polar components (LEDs, capacitors, motors)
 5. Layout: sources x=60 left, controls x=240-360 center, loads x=460-540 right. 160px Y-spacing between rows.
 6. For complex circuits (winch, alarm, motor reversing): use relays for switching, fuses for protection
+7. For large circuits: spread components generously — use x range 60–800, y range 60–700, 140-180px between rows
 
 BUILD FORMAT — respond with this exact structure:
 - Each component MUST have a unique "label" field (e.g. "bat1", "fuse1", "relay_fwd", "relay_rev"). NO two components share a label.
@@ -77,6 +78,11 @@ MOTOR SPEED CONTROL: source → fuse → potmeter → motor. Add NPN transistor 
 MOTOR REVERSING: source → fuse → relay1(forward) + relay2(reverse) → motor. Interlock: relay1-sw prevents relay2 energizing simultaneously.
 LIGHTING CIRCUIT: source → fuse → switch_ → bulb or led+resistor.
 DC POWER SUPPLY: acsource → transformer → bridge_rect → capacitor → voltage_reg → load.
+HVAC / CONTROL CIRCUIT: acsource(240V) → breaker(2-pole) → relay(contactor) load side → motor(compressor) + motor(fan). Control: transformer(240V→24V) secondary → switch_(HP) → switch_(LP) → switch_(thermostat Y) → relay coil. Capacitors in parallel with motor loads. Use RED for L1, ORANGE for L2, YELLOW for 24V control, GREEN for ground/common.
+STAR-DELTA MOTOR STARTER: acsource → breaker → relay_main + relay_star (energize together at start) → motor. Timer triggers relay_delta after 5s, opens relay_star. Use orange for delta leg.
+SOLAR CHARGE CONTROLLER: solar → voltage_reg(MPPT sim) → battery. Load: switch_ → bulb. Diode to prevent reverse current. Red=PV+, Black=PV−, Yellow=battery+.
+HOME ALARM PANEL: dc_source(12V) → breaker → relay_siren + relay_strobe in parallel. Control via series chain of NC switch_(door) → NC switch_(motion) → pushbtn(trigger) → relay coils. LED status indicators per zone.
+GENERATOR TRANSFER SWITCH: acsource(utility) + acsource(generator) → relay(ATS) → loads. Interlock prevents both sources connecting simultaneously.
 
 For any real-world system request: (1) identify circuit type, (2) list all components needed with values, (3) describe wire routing and colors, (4) then output the build block.
 If uncertain, state it clearly and build the safest approximation. NEVER connect positive directly to negative.
@@ -91,7 +97,7 @@ const QUICK_PROMPTS = [
   { label: '🔋 LED + Resistor', text: 'Build a simple 9V battery circuit with a switch, a 220 ohm current-limiting resistor, and an LED. Include proper wire colors.' },
 ];
 
-export default function AIView({ snap, setAiHL, setView, bump, aiMsgs, setAiMsgs }) {
+export default function AIView({ snap, setAiHL, setView, bump, aiMsgs, setAiMsgs, onBuildComplete }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showQuick, setShowQuick] = useState(false);
@@ -168,6 +174,7 @@ USER QUESTION: ${text}`;
             const responseText = raw.replace(/<build>[\s\S]*?<\/build>/g, '').trim();
             setAiMsgs(m => [...m, { role: 'assistant', content: responseText || '✓ Circuit built successfully!' }]);
             setView('canvas');
+            if (onBuildComplete) onBuildComplete([...placedComps.values()]);
             setLoading(false);
             return;
           }

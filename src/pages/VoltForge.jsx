@@ -525,6 +525,25 @@ export default function VoltForge() {
                 bump={bump}
                 aiMsgs={aiMsgs}
                 setAiMsgs={setAiMsgs}
+                onBuildComplete={(placedComps) => {
+                  if (!placedComps.length) return;
+                  const PAD = 80;
+                  const xs = placedComps.map(c => c.x);
+                  const ys = placedComps.map(c => c.y);
+                  const minX = Math.min(...xs) - PAD;
+                  const minY = Math.min(...ys) - PAD;
+                  const maxX = Math.max(...xs) + 120 + PAD;
+                  const maxY = Math.max(...ys) + 60 + PAD;
+                  const cw = cvRef.current?.clientWidth || 360;
+                  const ch = cvRef.current?.clientHeight || 600;
+                  const newZoom = Math.min(1.2, Math.max(0.2, Math.min(cw / (maxX - minX), ch / (maxY - minY))));
+                  const newPanX = (cw - (maxX + minX) * newZoom) / 2;
+                  const newPanY = (ch - (maxY + minY) * newZoom) / 2;
+                  zoomRef.current = newZoom;
+                  panRef.current = { x: newPanX, y: newPanY };
+                  setZoom(newZoom);
+                  setPan({ x: newPanX, y: newPanY });
+                }}
               />
             )}
             {currentView === 'save' && (
