@@ -13,7 +13,7 @@ export default function CanvasView({
   onCanvasTouchStart, onCanvasMouseDown,
   onCompPress, onTermPress, setWColor, setSelected, bump,
   isRewire, onWireLongPress,
-  multiSelect, setMultiSelect, selectionRect,
+  multiSelect, setMultiSelect, wireTouchedRef, selectionRect,
 }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const simHasErrors = simOn && errors?.length > 0;
@@ -112,6 +112,7 @@ export default function CanvasView({
               let wireLpTimer = null;
               const startWirePress = (e, isTouch) => {
                 e.stopPropagation();
+                if (wireTouchedRef) wireTouchedRef.current = true;
                 const s = e.touches?.[0] || e.changedTouches?.[0] || e;
                 const clientX = s.clientX, clientY = s.clientY;
                 const r = cvRef.current?.getBoundingClientRect() || { left: 0, top: 0 };

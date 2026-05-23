@@ -91,6 +91,7 @@ export default function VoltForge() {
   const lpTimer = useRef(null);
   const lpActive = useRef(null);
   const compTouched = useRef(false);
+  const wireTouched = useRef(false);
   const pinchRef = useRef(null);
   const panDragRef = useRef(null);
   const selDragRef = useRef(null);
@@ -189,6 +190,7 @@ export default function VoltForge() {
 
   const onCanvasTouchStart = useCallback(e => {
     if (compTouched.current) { compTouched.current = false; return; }
+    if (wireTouched.current) { wireTouched.current = false; return; }
     if (e.touches.length === 2) {
       drawing.current = null; snapRef.current = null;
       clearTimeout(lpTimer.current); lpActive.current = false;
@@ -221,6 +223,7 @@ export default function VoltForge() {
   }, [placing, eXY, bump, clearRubberBand]);
 
   const onCanvasMouseDown = useCallback(e => {
+    if (wireTouched.current) { wireTouched.current = false; return; }
     if (placing) {
       const { x, y } = eXY(e);
       const gs = 20;
@@ -554,6 +557,7 @@ export default function VoltForge() {
               isRewire={!!drawing.current?.rewireId}
               multiSelect={multiSelect}
               setMultiSelect={setMultiSelect}
+              wireTouchedRef={wireTouched}
               selectionRect={selectionRect}
             />
           )}
