@@ -56,7 +56,7 @@ export default function VoltForge() {
   const [aiHL, setAiHL] = useState({ compIds: [], type: 'info' });
   const [aiMsgs, setAiMsgs] = useState([{
     role: 'assistant',
-    content: "👋 I'm **Volt·AI**! I can analyze your circuit OR build one for you! Just describe what you need (e.g., 'Add a battery and LED with a resistor'), and I'll place components and connect wires automatically.",
+    content: "👋 I'm **Volt·AI**! I can help you with anything VoltForge:\n\n• **Build circuits** — just describe what you need and I'll place and wire it for you\n• **Analyze your circuit** — ask about voltage, current, faults or component choices\n• **How to use the app** — placing parts, drawing wires, running the simulator, saving projects, multi-select… just ask!\n\nWhat would you like to do?",
   }]);
   const [autoSnap, setAutoSnap] = useState(false);
   const autoSnapRef = useRef(false);
