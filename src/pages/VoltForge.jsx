@@ -216,6 +216,13 @@ export default function VoltForge() {
       return;
     }
     if (drawing.current) { drawing.current = null; snapRef.current = null; clearRubberBand(); return; }
+    // If items are selected, start a pan instead of clearing selection
+    if (multiSelect.size > 0) {
+      const s = e.touches[0];
+      panDragRef.current = { startClientX: s.clientX, startClientY: s.clientY, panX: panRef.current.x, panY: panRef.current.y };
+      if (e.cancelable) e.preventDefault();
+      return;
+    }
     const { x: _sx, y: _sy } = eXY(e);
     selDragRef.current = { startX: _sx, startY: _sy, currentX: _sx, currentY: _sy };
     setSelectionRect({ x1: _sx, y1: _sy, x2: _sx, y2: _sy });
