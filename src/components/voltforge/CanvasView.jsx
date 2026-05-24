@@ -1,4 +1,5 @@
 import { T, CW, CH, STATE_COL } from '@/lib/voltforge/theme';
+import CanvasHints from '@/components/voltforge/CanvasHints';
 import MultiSelectBar from '@/components/voltforge/MultiSelectBar';
 import { DEFS } from '@/lib/voltforge/definitions';
 import { G } from '@/lib/voltforge/instances';
@@ -18,6 +19,8 @@ export default function CanvasView({
   clipboard, onMultiDelete, onMultiCopy, onMultiPaste, onMultiMove,
 }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showHints, setShowHints] = useState(() => !localStorage.getItem('vf_canvas_hints'));
+  const dismissHints = () => { localStorage.setItem('vf_canvas_hints', '1'); setShowHints(false); };
   const simHasErrors = simOn && errors?.length > 0;
   const simRunning = simOn && !simHasErrors;
   const hint = isRewire ? 'Drag wire end to a new terminal'
@@ -555,7 +558,9 @@ export default function CanvasView({
           );
         })()}
 
-        {showColorPicker && (
+        {showHints && <CanvasHints onDone={dismissHints} />}
+
+      {showColorPicker && (
           <WireColorPicker
             wColor={wColor}
             setWColor={setWColor}
