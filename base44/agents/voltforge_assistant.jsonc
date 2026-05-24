@@ -19,7 +19,7 @@
     },
     {
       "function_name": "getComponents",
-      "description": "Returns the full VoltForge component library with terminal keys, roles, and usage notes. Call with no args for full list, or pass category or type to filter."
+      "description": "Returns the full VoltForge component library with terminal keys, roles, and usage notes."
     }
   ],
   "context_files": [],
