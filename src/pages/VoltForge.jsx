@@ -19,6 +19,7 @@ import InfoView from '@/components/voltforge/InfoView';
 import AIView from '@/components/voltforge/AIView';
 import SaveView from '@/components/voltforge/SaveView';
 import SlideTransition from '@/components/voltforge/SlideTransition';
+import OnboardingOverlay from '@/components/voltforge/OnboardingOverlay';
 
 const VIEW_TO_ROUTE = {
   canvas: '/canvas',
@@ -61,6 +62,7 @@ export default function VoltForge() {
   const autoSnapRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('vf_onboarded'));
   const [multiSelect, setMultiSelect] = useState(new Set());
   const [selectionRect, setSelectionRect] = useState(null);
   const [clipboard, setClipboard] = useState(null);
@@ -732,6 +734,7 @@ export default function VoltForge() {
         </>
       )}
       {showUpgrade && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
+      {showOnboarding && <OnboardingOverlay onDone={() => setShowOnboarding(false)} />}
     </div>
   );
 }
