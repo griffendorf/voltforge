@@ -521,43 +521,10 @@ export default function CanvasView({
         )}
       </div>
 
-      {/* Floating multi-select toolbar — outside cvRef so it's not clipped */}
-      {multiSelect?.size > 0 && !selectionRect && (() => {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        [...multiSelect].forEach(id => {
-          const comp = comps.find(c => c.id === id);
-          if (comp) {
-            minX = Math.min(minX, comp.x); minY = Math.min(minY, comp.y);
-            maxX = Math.max(maxX, comp.x + CW); maxY = Math.max(maxY, comp.y + CH);
-          } else {
-            const wire = wires.find(w => w.id === id);
-            if (wire) {
-              const tA = G.terminals.get(wire.from), tB = G.terminals.get(wire.to);
-              if (tA && tB) {
-                minX = Math.min(minX, tA.wx, tB.wx); minY = Math.min(minY, tA.wy, tB.wy);
-                maxX = Math.max(maxX, tA.wx, tB.wx); maxY = Math.max(maxY, tA.wy, tB.wy);
-              }
-            }
-          }
-        });
-        if (minX === Infinity) return null;
-
-        const canvasW = cvRef.current?.clientWidth || 360;
-        const canvasH = cvRef.current?.clientHeight || 600;
-        const BAR_HALF_W = 180;
-        const BAR_H = 56;
-        const GAP = 12;
-
-        const rawCX = (minX + maxX) / 2 * zoom + pan.x;
-        const rawTY = minY * zoom + pan.y - BAR_H - GAP;
-
-        const clampedX = Math.max(BAR_HALF_W + GAP, Math.min(canvasW - BAR_HALF_W - GAP, rawCX));
-        const clampedY = Math.max(GAP, Math.min(canvasH - BAR_H - GAP, rawTY));
-
-        return (
+      {/* Floating multi-select toolbar — pinned to bottom-center */}
+      {multiSelect?.size > 0 && !selectionRect && (
+        <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 200 }}>
           <MultiSelectBar
-            barX={clampedX}
-            barY={clampedY}
             count={multiSelect.size}
             onDelete={onMultiDelete}
             onCopy={onMultiCopy}
@@ -565,8 +532,8 @@ export default function CanvasView({
             onMove={onMultiMove}
             hasClipboard={!!clipboard}
           />
-        );
-      })()}
+        </div>
+      )}
     </div>
   );
 }

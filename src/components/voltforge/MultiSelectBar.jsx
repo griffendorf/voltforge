@@ -40,7 +40,7 @@ const Divider = () => (
   <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} />
 );
 
-export default function MultiSelectBar({ barX, barY, count, onDelete, onCopy, onPaste, onMove, hasClipboard }) {
+export default function MultiSelectBar({ count, onDelete, onCopy, onPaste, onMove, hasClipboard }) {
   if (!count) return null;
 
   return (
@@ -48,10 +48,6 @@ export default function MultiSelectBar({ barX, barY, count, onDelete, onCopy, on
       onMouseDown={e => e.stopPropagation()}
       onTouchStart={e => e.stopPropagation()}
       style={{
-        position: 'absolute',
-        left: barX,
-        top: barY,
-        transform: 'translateX(-50%)',
         zIndex: 200,
         height: 56,
         display: 'flex', alignItems: 'center',

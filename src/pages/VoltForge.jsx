@@ -594,22 +594,29 @@ export default function VoltForge() {
 
   const onBuildComplete = useCallback((placedComps) => {
     if (!placedComps.length) return;
-    const PAD = 80;
-    const xs = placedComps.map(c => c.x);
-    const ys = placedComps.map(c => c.y);
-    const minX = Math.min(...xs) - PAD;
-    const minY = Math.min(...ys) - PAD;
-    const maxX = Math.max(...xs) + 120 + PAD;
-    const maxY = Math.max(...ys) + 60 + PAD;
-    const cw = cvRef.current?.clientWidth || 360;
-    const ch = cvRef.current?.clientHeight || 600;
-    const newZoom = Math.min(1.2, Math.max(0.2, Math.min(cw / (maxX - minX), ch / (maxY - minY))));
-    const newPanX = (cw - (maxX + minX) * newZoom) / 2;
-    const newPanY = (ch - (maxY + minY) * newZoom) / 2;
-    zoomRef.current = newZoom;
-    panRef.current = { x: newPanX, y: newPanY };
-    setZoom(newZoom);
-    setPan({ x: newPanX, y: newPanY });
+    // Delay so the canvas view has time to mount/resize
+    setTimeout(() => {
+      const PAD = 60;
+      const xs = placedComps.map(c => c.x);
+      const ys = placedComps.map(c => c.y);
+      const minX = Math.min(...xs) - PAD;
+      const minY = Math.min(...ys) - PAD;
+      const maxX = Math.max(...xs) + 100 + PAD;
+      const maxY = Math.max(...ys) + 80 + PAD;
+      const cw = cvRef.current?.clientWidth || 360;
+      const ch = cvRef.current?.clientHeight || 600;
+      const circW = Math.max(1, maxX - minX);
+      const circH = Math.max(1, maxY - minY);
+      // Zoom out to 80% of fit so there's breathing room
+      const newZoom = Math.min(0.85, Math.max(0.15, Math.min(cw / circW, ch / circH) * 0.8));
+      // Center the circuit in the canvas
+      const newPanX = cw / 2 - (minX + circW / 2) * newZoom;
+      const newPanY = ch / 2 - (minY + circH / 2) * newZoom;
+      zoomRef.current = newZoom;
+      panRef.current = { x: newPanX, y: newPanY };
+      setZoom(newZoom);
+      setPan({ x: newPanX, y: newPanY });
+    }, 150);
   }, []);
 
   const headerEl = (

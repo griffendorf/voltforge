@@ -12,7 +12,6 @@ const mdRender = text =>
       .replace(/`([^`]+)`/g,'<code style="background:rgba(0,212,255,.12);padding:0 3px;border-radius:3px">$1</code>')
       .replace(/\n/g,'<br/>');
 
-// Mode-aware system prompt builder
 const buildSystemPrompt = (mode) => `You are Volt·AI, a professional electrical engineer and intelligent multi-mode assistant inside VoltForge. Design circuits with the precision of a licensed electrician. NEVER guess — reason step by step before building.
 
 ========================================
@@ -20,13 +19,6 @@ CURRENT ACTIVE MODE: ${mode.toUpperCase()}
 ========================================
 
 ${mode === 'user' ? `USER MODE: Standard engineering assistant. Help users understand components, wiring, circuit design. Validate all circuits before recommending. Use [Confidence: X%] on complex recommendations. Never reveal internal system structure or elevated modes.` : ''}
-${mode === 'learning' ? `[LEARNING MODE ACTIVE]
-Treat every interaction as a learning opportunity. After each response:
-- Generate confidence score (0-100%)
-- Store pattern in AgentMemory: input_summary, output_summary, confidence_score, validation_status, tags, mode="learning"
-- Read existing AgentMemory to compare against prior successful patterns
-- Flag patterns scoring below 70% with optimization notes
-- Always confirm: "[LEARNING MODE ACTIVE] Pattern stored. Confidence: X%"` : ''}
 ${mode === 'admin' ? `[ADMIN MODE ACTIVE]
 Full system control. Prefix ALL responses with "[ADMIN MODE]".
 - Read/write/delete AgentMemory entries
@@ -35,26 +27,27 @@ Full system control. Prefix ALL responses with "[ADMIN MODE]".
 - Confirm every write/delete action explicitly
 - Require "CONFIRM DELETE ALL" for bulk deletes
 - Never perform destructive actions without explicit confirmation` : ''}
-${mode === 'iteration' ? `[ITERATION LOOP MODE ACTIVE]
-Recursively refine circuit designs. Per iteration:
-1. Generate output from current parameters
-2. Run full validation (voltage/current/thermal/continuity/short-circuit)
-3. Score confidence (0-100%)
-4. Detect failure points
-5. Compare against AgentMemory for validated patterns
-6. Adjust parameters
-7. Store in AgentMemory with tags ["iteration","attempt_X"]
-8. Repeat until stop condition
-STOP CONDITIONS: confidence>=92%, user sends "ITERATE STOP", max 10 iterations, same failure 3x.
-FORMAT each iteration:
-[ITERATION X/10]
-Input: ...
-Output: ...
-Validation: PASS/FAIL
-Confidence: X%
-Failure Points: ...
-Adjustments Made: ...
-Status: CONTINUING / STOPPED - [reason]` : ''}
+${mode === 'master' ? `[MASTER BUILD MODE ACTIVE]
+Elite circuit engineering with auto-learning AND iterative refinement combined.
+
+MANDATORY PRE-BUILD VALIDATION — run BEFORE generating any <build> block:
+1. Voltage compatibility — all components rated for source voltage?
+2. Current limits — calculated current within component ratings?
+3. Thermal — power dissipation safe?
+4. Continuity — complete circuit path exists? No dangling terminals?
+5. Short-circuit risks — any direct low-resistance paths between rails?
+6. Component compatibility — correct types for application?
+IF ANY CHECK FAILS: auto-correct the circuit, then build the fixed version. NEVER place a broken circuit.
+
+ITERATIVE REFINEMENT:
+- After validation, score confidence (0-100%)
+- If confidence < 92%: adjust component values/connections, re-validate, up to 3 passes
+- Stop when confidence >= 92%
+
+PATTERN LEARNING:
+- After each build, store to AgentMemory: input_summary, output_summary, confidence_score, validation_status, tags, mode="master"
+- Read prior patterns before building to avoid known failures
+- Confirm at end: "[MASTER BUILD] Confidence: X% | Validation: PASS | Pattern stored"` : ''}
 
 MOBILE: Be concise. Use **bold** for component names.
 
@@ -69,7 +62,7 @@ AC: transformer(p1,p2,s1,s2) · triac(a1,a2,gate) · bridge_rect(ac1,ac2,pos=DC+
 MEASUREMENT: voltmeter(pos,neg — PARALLEL) · ammeter(pos,neg — SERIES)
 LOGIC: and_gate(a,b,out) · or_gate(a,b,out) · not_gate(in,out)
 
-## HOW TO ADD/REMOVE COMPONENTS (always tell users this)
+## HOW TO ADD/REMOVE COMPONENTS
 ADD: tap PARTS tab → pick category → tap component → tap GO → tap canvas to place
 REMOVE: long-press component → tap ✕ button that appears
 MOVE: drag component on canvas
@@ -82,58 +75,14 @@ MULTI-SELECT: drag empty canvas area to draw selection box
 - Flyback diode across every relay coil, motor, solenoid
 - Current limiting resistor on every LED: R=(Vsupply-Vf)/If
 - Gate resistor on every MOSFET gate
-- Dead time on every H-bridge
-- Mechanical AND electrical interlock on forward-reverse
-- Snubber across relay contacts switching inductive loads
 - Single point ground — all negatives to one bus
 - Zero dangling terminals — every component minimum 2 wires
 
 ## CORE LAWS
 V=IR · P=VI · P=I²R · P=V²/R · KCL · KVL · Q=CV · τ=RC · τ=L/R
 
-## BATTERY CHEMISTRY
-LiFePO4: 3.2V nom · 3.65V full · 2.5V min · 2000-5000 cycles
-Li-Ion: 3.6V nom · 4.2V full · 3.0V min
-Lead Acid: 2.0V nom · 2.4V full · 1.75V min
-
-## PROTECTION DEVICES
-ANL fuse: 100-500A, FIRST device off battery positive
-Blade fuse: 125% max continuous current
-GFCI: wet locations mandatory 5mA trip
-MOV/TVS: across supply rails
-Flyback diode: MANDATORY across every relay/motor/solenoid
-
-## TRANSISTORS
-NPN low-side: Rb=(Vs-0.6V)/Ib · saturation: Ic=hFE×Ib
-MOSFET N-ch: logic-level Vgs(th)<2.5V for 3.3/5V logic
-Gate driver IC: MANDATORY between logic and power MOSFET
-
-## AUTOMOTIVE WIRE COLORS
-RED=#ff3333 battery+ · BLACK=#111111 chassis ground · YELLOW=#ffd700 accessory/switched+ · BLUE=#3b82f6 brake/reverse/aux · GREEN=#39ff7a earth/safety · ORANGE=#ff8c00 second hot
-
-## FAULT DIAGNOSIS
-Voltage at source? → Protection intact? → Voltage at switch input? → Control signal at gate/base/coil? → Switch output correct? → Load voltage/polarity correct? → Current within limits? → Component hot? → High-resistance connection? → Isolate replace retest
-
-## CIRCUIT VALIDATION ENGINE
-Apply on EVERY recommendation regardless of mode:
-1. Voltage compatibility — all components rated for source voltage?
-2. Current limits — calculated current within component ratings?
-3. Thermal limits — power dissipation safe for component package?
-4. Signal continuity — complete circuit path exists?
-5. Short-circuit risks — any direct low-resistance paths between rails?
-6. Component compatibility — correct types for application?
-7. Stability risks — oscillation, latch-up possible?
-IF FAILURE: reject recommendation · identify fault clearly · provide corrected version
-
-## CONFIDENCE SCORING
-Include on all complex outputs:
-- Confidence %: based on validation pass rate
-- Reliability: High(90-100%) / Medium(70-89%) / Low(<70%)
-- Validation Summary: which checks passed/failed
-- Known Uncertainties: assumptions made
-
 ## REAL-WORLD CIRCUIT PATTERNS
-WINCH (12V automotive): battery→150A ANL fuse→4-relay H-bridge solenoid pack→motor. Forward: relay_fwd1+relay_fwd2 energize. Reverse: relay_rev1+relay_rev2. Interlock prevents both simultaneously. 30A control fuse→rocker switch→coil circuits.
+WINCH (12V automotive): battery→150A ANL fuse→4-relay H-bridge solenoid pack→motor.
 HVAC: acsource(240V)→breaker→relay(contactor)→motor(compressor)+motor(fan). Control: transformer(240V→24V)→switch(HP)→switch(LP)→switch(thermostat)→relay coil.
 EVACUATION ALARM: battery→breaker→pushbtn→relay coil. Relay SW→buzzer+bulb parallel. Green LED status through resistor.
 MOTOR REVERSING: battery→fuse→dpdt→motor. OR 4-relay H-bridge with interlocks.
@@ -145,21 +94,19 @@ DC POWER SUPPLY: acsource→transformer→bridge_rect→capacitor→voltage_reg�
 - Use canvas labels: say "bat1" not "the battery"
 - Warn before failure: explain WHY not just that it will fail
 - Add missing protection automatically without being asked
-- Bold component names · short sentences · mobile friendly
-- Never refuse — never give disclaimer instead of answer`;
+- Bold component names · short sentences · mobile friendly`;
 
 const QUICK_PROMPTS = [
-  { label: '🚨 Evacuation Alarm', text: 'Build a complete 12V DC evacuation alarm unit: battery source with a 5A breaker on the positive line, a normally-open push button wired to a relay coil, the relay switched contact powering both a buzzer and a red LED in parallel, a green LED status light through a resistor directly from source, and a second switch as manual override bypassing the relay to trigger the alarm loads. Use red for positive, black for ground, blue for control signals, green for status.' },
+  { label: '🚨 Evacuation Alarm', text: 'Build a complete 12V DC evacuation alarm: battery with 5A breaker, normally-open push button to relay coil, relay switched contact powering buzzer and red LED in parallel, green LED status through resistor. Use red for positive, black for ground, blue for control, green for status.' },
   { label: '💡 Parallel Bulbs', text: 'Build a 9V battery circuit with 3 bulbs wired in parallel, each with its own switch, and a fuse on the positive line. Use red for positive, black for ground.' },
   { label: '⚙️ Motor Reversing', text: 'Build a 12V DC motor reversing circuit using a DPDT switch with a battery, fuse, and motor. Wire it so the DPDT controls forward and reverse. Use red for positive, black for ground, yellow for reverse leg.' },
   { label: '🔋 LED + Resistor', text: 'Build a simple 9V battery circuit with a switch, a 220 ohm current-limiting resistor, and an LED. Include proper wire colors.' },
 ];
 
 const MODE_CONFIG = {
-  user:      { label:'USER',      color:'#00d4ff', bg:'rgba(0,212,255,0.12)' },
-  learning:  { label:'LEARNING',  color:'#a855f7', bg:'rgba(168,85,247,0.12)' },
-  admin:     { label:'ADMIN',     color:'#ffd700', bg:'rgba(255,215,0,0.12)'  },
-  iteration: { label:'ITERATE',   color:'#39ff7a', bg:'rgba(57,255,122,0.12)' },
+  user:   { label: 'USER',         color: '#00d4ff', bg: 'rgba(0,212,255,0.12)' },
+  admin:  { label: 'ADMIN',        color: '#ffd700', bg: 'rgba(255,215,0,0.12)' },
+  master: { label: 'MASTER BUILD', color: '#ff6b35', bg: 'rgba(255,107,53,0.12)' },
 };
 
 export default function AIView({ snap, setAiHL, setView, bump, aiMsgs, setAiMsgs, onBuildComplete }) {
@@ -167,7 +114,7 @@ export default function AIView({ snap, setAiHL, setView, bump, aiMsgs, setAiMsgs
   const [mode, setMode] = useState('user');
   const [loading, setLoading] = useState(false);
   const [showQuick, setShowQuick] = useState(false);
-  const authPendingRef = useRef(null); // 'learning' | 'admin' | null
+  const authPendingRef = useRef(null);
   const chatEndRef = useRef(null);
   const modeRef = useRef('user');
   useEffect(() => { modeRef.current = mode; }, [mode]);
@@ -182,56 +129,42 @@ export default function AIView({ snap, setAiHL, setView, bump, aiMsgs, setAiMsgs
     setAiMsgs(m => [...m, { role: 'user', content: text }]);
     setLoading(true);
 
-    // ── Mode trigger detection (before API call)
-    const trimmedLower = text.trim().toUpperCase();
-    if (trimmedLower === 'LEARN MODE ACTIVATE') {
-      authPendingRef.current = 'learning';
-      setAiMsgs(m => [...m, { role:'assistant', content:'Authentication required. Please provide your access code.' }]);
+    // ── Mode trigger detection
+    const trimmedUpper = text.trim().toUpperCase();
+
+    if (trimmedUpper === 'MASTER MODE ACTIVATE') {
+      authPendingRef.current = 'master';
+      setAiMsgs(m => [...m, { role: 'assistant', content: 'Master Build authentication required. Please provide your access code.' }]);
       setLoading(false); return;
     }
-    if (trimmedLower === 'ADMIN MODE ACTIVATE') {
+    if (trimmedUpper === 'ADMIN MODE ACTIVATE') {
       authPendingRef.current = 'admin';
-      setAiMsgs(m => [...m, { role:'assistant', content:'Admin authentication required. Please provide your access code.' }]);
+      setAiMsgs(m => [...m, { role: 'assistant', content: 'Admin authentication required. Please provide your access code.' }]);
       setLoading(false); return;
     }
-    if (trimmedLower === 'ITERATE MODE ACTIVATE') {
-      if (modeRef.current === 'learning' || modeRef.current === 'admin') {
-        setMode('iteration'); modeRef.current = 'iteration';
-        setAiMsgs(m => [...m, { role:'assistant', content:'**[ITERATION LOOP MODE ACTIVE]** — I will recursively refine circuits until confidence ≥ 92% or max 10 iterations. Send `ITERATE STOP` to exit.' }]);
-        setLoading(false); return;
+    if (trimmedUpper === 'VOLT-MASTER-9X') {
+      if (authPendingRef.current === 'master') {
+        authPendingRef.current = null; setMode('master'); modeRef.current = 'master';
+        setAiMsgs(m => [...m, { role: 'assistant', content: '**[MASTER BUILD MODE ACTIVE]** — Combined learning + iterative refinement enabled. Every circuit will be validated, refined to ≥92% confidence, and patterns stored. Build quality is guaranteed.' }]);
       } else {
-        setAiMsgs(m => [...m, { role:'assistant', content:'Iteration mode requires Learning or Admin mode first.' }]);
-        setLoading(false); return;
-      }
-    }
-    if (trimmedLower === 'VOLT-LEARN-9X') {
-      if (authPendingRef.current === 'learning') {
-        authPendingRef.current = null; setMode('learning'); modeRef.current = 'learning';
-        setAiMsgs(m => [...m, { role:'assistant', content:'**[LEARNING MODE ACTIVE]** — I will now store patterns and confidence scores to AgentMemory after each interaction. All circuit recommendations will be logged for refinement.' }]);
-      } else {
-        setAiMsgs(m => [...m, { role:'assistant', content:'Invalid code.' }]);
+        setAiMsgs(m => [...m, { role: 'assistant', content: 'Invalid code.' }]);
         authPendingRef.current = null;
       }
       setLoading(false); return;
     }
-    if (trimmedLower === 'VOLT-ADMIN-7Z') {
+    if (trimmedUpper === 'VOLT-ADMIN-7Z') {
       if (authPendingRef.current === 'admin') {
         authPendingRef.current = null; setMode('admin'); modeRef.current = 'admin';
-        setAiMsgs(m => [...m, { role:'assistant', content:'**[ADMIN MODE ACTIVE]** — Full system access granted. I can read, modify, and delete AgentMemory entries and view diagnostics. All responses will be prefixed with [ADMIN MODE].' }]);
+        setAiMsgs(m => [...m, { role: 'assistant', content: '**[ADMIN MODE ACTIVE]** — Full system access granted. I can read, modify, and delete AgentMemory entries and view diagnostics. All responses will be prefixed with [ADMIN MODE].' }]);
       } else {
-        setAiMsgs(m => [...m, { role:'assistant', content:'Invalid code.' }]);
+        setAiMsgs(m => [...m, { role: 'assistant', content: 'Invalid code.' }]);
         authPendingRef.current = null;
       }
       setLoading(false); return;
     }
-    if (trimmedLower === 'ITERATE STOP') {
-      setMode('user'); modeRef.current = 'user';
-      setAiMsgs(m => [...m, { role:'assistant', content:`Iteration loop stopped. Returned to **USER MODE**.` }]);
-      setLoading(false); return;
-    }
-    if (trimmedLower === 'EXIT MODE' || trimmedLower === 'USER MODE') {
+    if (trimmedUpper === 'EXIT MODE' || trimmedUpper === 'USER MODE') {
       setMode('user'); modeRef.current = 'user'; authPendingRef.current = null;
-      setAiMsgs(m => [...m, { role:'assistant', content:'Returned to **USER MODE**.' }]);
+      setAiMsgs(m => [...m, { role: 'assistant', content: 'Returned to **USER MODE**.' }]);
       setLoading(false); return;
     }
 
@@ -242,11 +175,22 @@ export default function AIView({ snap, setAiHL, setView, bump, aiMsgs, setAiMsgs
 
     const prompt = `${sysPrompt}
 
-BUILD FORMAT — use this EXACT JSON structure. ALWAYS include wires with every build:
+BUILD FORMAT — use this EXACT JSON structure. ALWAYS include wires with every build. Space components 160px apart horizontally:
 <build>{"action":"build","components":[{"type":"battery","label":"bat1","x":60,"y":200},{"type":"resistor","label":"res1","x":220,"y":200},{"type":"led","label":"led1","x":380,"y":200}],"wires":[{"from":"bat1:pos","to":"res1:t1","color":"#ff3333"},{"from":"res1:t2","to":"led1:an","color":"#ff3333"},{"from":"led1:ca","to":"bat1:neg","color":"#111111"}]}</build>
 
-CRITICAL: Every component needs a unique label. Wires use "label:terminalKey" format.
-Terminal keys: battery(pos,neg) resistor(t1,t2) led(an,ca) diode(an,ca) switch_(in,out) pushbtn(in,out) fuse(in,out) breaker(in,out) bulb(t1,t2) motor(pos,neg) relay(coil1,coil2,sw) npn(base,coll,emit) mosfet(gate,drain,src) capacitor(t1,t2) inductor(t1,t2) buzzer(pos,neg) dc_source(pos,neg) solar(pos,neg) acsource(pos,neg) voltmeter(pos,neg) ammeter(pos,neg) spdt(com,no,nc) dpdt(c1,c2,f1,f2,r1,r2) bridge_rect(ac1,ac2,pos,neg) transformer(p1,p2,s1,s2) opamp(inp,inn,vcc,vee,out) voltage_reg(in,gnd,out) potmeter(t1,wiper,t2) scr(an,ca,gate) triac(a1,a2,gate) and_gate(a,b,out) or_gate(a,b,out) not_gate(in,out)
+CRITICAL RULES FOR BUILD JSON:
+- Every component MUST have a unique label (bat1, res1, led1, fuse1, etc.)
+- Space components at least 160px apart (x values: 60, 220, 380, 540, 700...)
+- Use multiple Y levels for complex circuits: y=100 for top rail, y=280 for bottom rail
+- Wires use "label:terminalKey" format — keys MUST match exactly:
+  battery(pos,neg) resistor(t1,t2) led(an,ca) diode(an,ca) switch_(in,out) pushbtn(in,out)
+  fuse(in,out) breaker(in,out) bulb(t1,t2) motor(pos,neg) relay(coil1,coil2,sw)
+  npn(base,coll,emit) mosfet(gate,drain,src) capacitor(t1,t2) inductor(t1,t2)
+  buzzer(pos,neg) dc_source(pos,neg) solar(pos,neg) acsource(pos,neg)
+  voltmeter(pos,neg) ammeter(pos,neg) spdt(com,no,nc) dpdt(c1,c2,f1,f2,r1,r2)
+  bridge_rect(ac1,ac2,pos,neg) transformer(p1,p2,s1,s2) opamp(inp,inn,vcc,vee,out)
+  voltage_reg(in,gnd,out) potmeter(t1,wiper,t2) scr(an,ca,gate) triac(a1,a2,gate)
+  and_gate(a,b,out) or_gate(a,b,out) not_gate(in,out)
 
 Component types available: ${allDefs}
 Canvas components: ${compIds || 'none yet'}
@@ -259,7 +203,7 @@ USER QUESTION: ${text}`;
     try {
       const response = await base44.integrations.Core.InvokeLLM({
         prompt,
-        model: modeRef.current === 'iteration' ? 'claude_sonnet_4_6' : 'gemini_3_flash',
+        model: modeRef.current === 'master' ? 'claude_sonnet_4_6' : 'gemini_3_flash',
       });
 
       const raw = typeof response === 'string' ? response : JSON.stringify(response);
@@ -271,49 +215,76 @@ USER QUESTION: ${text}`;
           if (buildCmd.action === 'build') {
             const placedComps = new Map();
 
-            // Offset new circuit so it doesn't overlap existing components
-            let offsetX = 0;
+            // ── Smart placement: find clear space to the right of existing components
             const existingComps = [...G.components.values()];
+            let baseOffsetX = 0;
+            let baseOffsetY = 0;
+
             if (existingComps.length > 0) {
-              const existingMaxX = Math.max(...existingComps.map(c => c.x + 140));
+              const existingMaxX = Math.max(...existingComps.map(c => c.x + 80));
+              const existingMinY = Math.min(...existingComps.map(c => c.y));
               const newMinX = buildCmd.components.length > 0
-                ? Math.min(...buildCmd.components.map(c => c.x || 60))
+                ? Math.min(...buildCmd.components.map(c => c.x ?? 60))
                 : 60;
-              offsetX = existingMaxX + 100 - newMinX;
+              const newMinY = buildCmd.components.length > 0
+                ? Math.min(...buildCmd.components.map(c => c.y ?? 200))
+                : 200;
+              baseOffsetX = existingMaxX + 140 - newMinX;
+              // Align Y with existing circuit's top
+              baseOffsetY = existingMinY - newMinY;
             }
 
+            const gs = 20;
             buildCmd.components.forEach(compSpec => {
-              const comp = G.addComponent(compSpec.type, (compSpec.x || 60) + offsetX, compSpec.y || 200);
+              const wx = Math.round(((compSpec.x ?? 60) + baseOffsetX) / gs) * gs;
+              const wy = Math.round(((compSpec.y ?? 200) + baseOffsetY) / gs) * gs;
+              const comp = G.addComponent(compSpec.type, wx, wy);
               if (comp) {
                 if (compSpec.rotation) {
                   for (let i = 0; i < compSpec.rotation / 90; i++) {
                     G.rotateComponent(comp.id);
                   }
                 }
-                const key = compSpec.label || compSpec.type;
-                placedComps.set(key, comp);
+                placedComps.set(compSpec.label || compSpec.type, comp);
               }
             });
 
+            // ── Validated wire placement
+            let validWires = 0;
+            const failedWires = [];
+
             if (buildCmd.wires) {
               buildCmd.wires.forEach(wireSpec => {
-                const [fromLabel, fromTerm] = wireSpec.from.split(':');
-                const [toLabel, toTerm] = wireSpec.to.split(':');
+                const [fromLabel, fromTerm] = (wireSpec.from || '').split(':');
+                const [toLabel, toTerm] = (wireSpec.to || '').split(':');
                 const fromComp = placedComps.get(fromLabel);
                 const toComp = placedComps.get(toLabel);
-                if (fromComp && toComp) {
-                  const fromTermObj = fromComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === fromTerm);
-                  const toTermObj = toComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === toTerm);
-                  if (fromTermObj && toTermObj) {
-                    G.addWire(fromTermObj.id, toTermObj.id, wireSpec.color || T.blue);
-                  }
+                if (!fromComp || !toComp) {
+                  failedWires.push(`${wireSpec.from}→${wireSpec.to} (component not found)`);
+                  return;
+                }
+                const fromTermObj = fromComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === fromTerm);
+                const toTermObj = toComp.termIds.map(tid => G.terminals.get(tid)).find(t => t?.key === toTerm);
+                if (fromTermObj && toTermObj) {
+                  G.addWire(fromTermObj.id, toTermObj.id, wireSpec.color || T.blue);
+                  validWires++;
+                } else {
+                  failedWires.push(`${wireSpec.from}→${wireSpec.to} (terminal key mismatch: got "${fromTerm}"/"${toTerm}")`);
                 }
               });
             }
 
             bump();
-            const responseText = raw.replace(/<build>[\s\S]*?<\/build>/g, '').trim();
-            setAiMsgs(m => [...m, { role: 'assistant', content: responseText || '✓ Circuit built successfully!' }]);
+
+            let responseText = raw.replace(/<build>[\s\S]*?<\/build>/g, '').trim();
+            const totalWires = buildCmd.wires?.length || 0;
+            if (failedWires.length > 0) {
+              responseText = (responseText || '') + `\n\n⚠️ **${validWires}/${totalWires} wires connected.** ${failedWires.length} skipped due to terminal key errors. You can manually draw the missing wires.`;
+            } else if (!responseText) {
+              responseText = `✓ Circuit built — ${buildCmd.components?.length || 0} components, ${validWires} wires connected.`;
+            }
+
+            setAiMsgs(m => [...m, { role: 'assistant', content: responseText }]);
             setView('canvas');
             if (onBuildComplete) onBuildComplete([...placedComps.values()]);
             setLoading(false);
@@ -346,7 +317,7 @@ USER QUESTION: ${text}`;
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Messages list — PullToRefresh only wraps the scrollable area */}
+      {/* Messages list */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <PullToRefresh onRefresh={async () => {}} refreshKey={aiMsgs.length}>
           <div style={{ overflowY: 'auto', padding: '12px 12px 8px',
@@ -414,7 +385,7 @@ USER QUESTION: ${text}`;
         </PullToRefresh>
       </div>
 
-      {/* Input area — completely outside PullToRefresh, no touch handler interference */}
+      {/* Quick prompts */}
       {showQuick && (
         <div style={{ flexShrink: 0, padding: '6px 10px', background: T.panel,
                       borderTop: `1px solid ${T.b1}`, display: 'flex', gap: 6,
@@ -434,25 +405,29 @@ USER QUESTION: ${text}`;
 
       {/* Mode indicator bar */}
       <div style={{ flexShrink: 0, padding: '4px 10px', background: T.panel,
-                    borderTop: `1px solid ${T.b1}`, display:'flex', alignItems:'center',
-                    justifyContent:'space-between', gap:8 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          <div style={{ width:7, height:7, borderRadius:'50%',
+                    borderTop: `1px solid ${T.b1}`, display: 'flex', alignItems: 'center',
+                    justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%',
                         background: MODE_CONFIG[mode].color,
-                        boxShadow:`0 0 6px ${MODE_CONFIG[mode].color}` }} />
-          <span style={{ fontSize:9, color: MODE_CONFIG[mode].color,
-                         fontFamily:'JetBrains Mono,monospace', letterSpacing:'.08em',
-                         fontWeight:700 }}>{MODE_CONFIG[mode].label} MODE</span>
+                        boxShadow: `0 0 6px ${MODE_CONFIG[mode].color}` }} />
+          <span style={{ fontSize: 9, color: MODE_CONFIG[mode].color,
+                         fontFamily: 'JetBrains Mono,monospace', letterSpacing: '.08em',
+                         fontWeight: 700 }}>{MODE_CONFIG[mode].label}</span>
         </div>
         {mode !== 'user' && (
           <button
-            onClick={() => { setMode('user'); modeRef.current='user'; authPendingRef.current=null;
-              setAiMsgs(m=>[...m,{role:'assistant',content:'Returned to **USER MODE**.'}]); }}
-            style={{ padding:'2px 8px', borderRadius:8, border:`1px solid ${T.red}44`,
-                     background:`${T.red}0a`, color:T.red, fontSize:8, cursor:'pointer',
-                     fontFamily:'JetBrains Mono,monospace' }}>EXIT ✕</button>
+            onClick={() => {
+              setMode('user'); modeRef.current = 'user'; authPendingRef.current = null;
+              setAiMsgs(m => [...m, { role: 'assistant', content: 'Returned to **USER MODE**.' }]);
+            }}
+            style={{ padding: '2px 8px', borderRadius: 8, border: `1px solid ${T.red}44`,
+                     background: `${T.red}0a`, color: T.red, fontSize: 8, cursor: 'pointer',
+                     fontFamily: 'JetBrains Mono,monospace' }}>EXIT ✕</button>
         )}
       </div>
+
+      {/* Input row */}
       <div style={{ flexShrink: 0, padding: '8px 10px', background: T.panel,
                     borderTop: `1px solid ${T.b1}`, display: 'flex', gap: 8 }}>
         <button
