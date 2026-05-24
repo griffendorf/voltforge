@@ -1,23 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import Stripe from 'npm:stripe@14.21.0';
 
 const PLANS = {
   pro: {
     name: 'VoltForge Pro',
-    price: '1.99',
-    subscriptionInfo: {
-      subscriptionSettings: { frequency: 'MONTH' },
-      title: 'VoltForge Pro – Monthly',
-      description: 'Unlimited components, wire colors, save/load projects',
-    },
+    amount: 499, // cents
+    interval: 'month',
   },
   premium: {
     name: 'VoltForge Premium',
-    price: '2.99',
-    subscriptionInfo: {
-      subscriptionSettings: { frequency: 'MONTH' },
-      title: 'VoltForge Premium – Monthly',
-      description: 'Everything in Pro + AI circuit assistant, priority support',
-    },
+    amount: 999, // cents
+    interval: 'month',
   },
 };
 
@@ -32,40 +25,28 @@ Deno.serve(async (req) => {
     if (!planDef) return Response.json({ error: 'Invalid plan' }, { status: 400 });
 
     const origin = req.headers.get('Origin') || 'https://fast-volt-forge-hub.base44.app';
+    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
 
-    const response = await fetch(
-      'https://www.wixapis.com/payments/platform/v1/checkout-sessions/construct',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: Deno.env.get('WIX_PAYMENT_API_KEY'),
-          'wix-site-id': Deno.env.get('WIX_PAYMENTS_SITE_ID'),
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: { name: planDef.name },
+          unit_amount: planDef.amount,
+          recurring: { interval: planDef.interval },
         },
-        body: JSON.stringify({
-          cart: {
-            items: [{ name: planDef.name, quantity: 1, price: planDef.price, subscriptionInfo: planDef.subscriptionInfo }],
-            customerInfo: { email: user.email },
-          },
-          callbackUrls: {
-            postFlowUrl: `${origin}/pricing`,
-            thankYouPageUrl: `${origin}/thank-you`,
-          },
-        }),
-      }
-    );
+        quantity: 1,
+      }],
+      customer_email: user.email,
+      metadata: { user_email: user.email, plan },
+      success_url: `${origin}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/pricing`,
+    });
 
-    const data = await response.json();
-    console.error('Wix response status:', response.status);
-    console.error('Wix site ID used:', Deno.env.get('WIX_PAYMENTS_SITE_ID'));
-    console.error('API key prefix:', (Deno.env.get('WIX_PAYMENT_API_KEY') || '').substring(0, 10));
-    console.error('Wix full response:', JSON.stringify(data));
-    if (!response.ok) {
-      console.error('Checkout error:', JSON.stringify(data));
-      return Response.json({ error: data.message || 'Checkout failed' }, { status: 500 });
-    }
-
-    return Response.json({ redirectUrl: data.checkoutSession.redirectUrl });
+    console.log('Stripe session created:', session.id, 'for plan:', plan);
+    return Response.json({ redirectUrl: session.url });
   } catch (error) {
     console.error('createCheckout error:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
