@@ -10,18 +10,26 @@ const HINTS = [
 ];
 
 export default function CanvasHints({ onDone }) {
+  const dismiss = (e) => {
+    e.stopPropagation();
+    onDone();
+  };
+
   return (
     <div
-      onClick={onDone}
+      onMouseDown={dismiss}
+      onTouchEnd={dismiss}
       style={{
         position: 'absolute', inset: 0, zIndex: 100,
-        background: 'rgba(5,12,22,0.88)',
+        background: 'rgba(5,12,22,0.92)',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        padding: '20px 16px', gap: 10,
+        padding: '20px 16px', gap: 8,
         animation: 'popIn .2s ease',
+        touchAction: 'none',
+        overflowY: 'auto',
       }}>
-      <div style={{ fontSize: 11, color: T.blue, letterSpacing: '.1em', fontWeight: 700, marginBottom: 4 }}>
+      <div style={{ fontSize: 11, color: '#00d4ff', letterSpacing: '.1em', fontWeight: 700, marginBottom: 4 }}>
         CANVAS GUIDE
       </div>
 
@@ -31,6 +39,7 @@ export default function CanvasHints({ onDone }) {
           background: T.card, border: `1px solid ${T.b2}`,
           borderRadius: 12, padding: '10px 14px',
           display: 'flex', alignItems: 'center', gap: 12,
+          pointerEvents: 'none',
         }}>
           <span style={{ fontSize: 22, flexShrink: 0 }}>{h.emoji}</span>
           <div>
@@ -40,13 +49,18 @@ export default function CanvasHints({ onDone }) {
         </div>
       ))}
 
-      <div style={{
-        marginTop: 8, padding: '11px 32px', borderRadius: 12, border: 'none',
-        background: 'linear-gradient(135deg,#00d4ff,#39ff7a)',
-        color: '#000', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-      }}>
+      <button
+        onMouseDown={e => { e.stopPropagation(); onDone(); }}
+        onTouchEnd={e => { e.stopPropagation(); onDone(); }}
+        style={{
+          marginTop: 8, width: '100%', maxWidth: 320, padding: '13px', borderRadius: 12,
+          border: 'none', background: 'linear-gradient(135deg,#00d4ff,#39ff7a)',
+          color: '#000', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+          touchAction: 'none',
+        }}>
         Got it — let me build! ⚡
-      </div>
+      </button>
+
       <div style={{ fontSize: 10, color: T.dim }}>Tap anywhere to dismiss</div>
     </div>
   );

@@ -31,6 +31,7 @@ export default function CanvasView({
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+      {showHints && <CanvasHints onDone={dismissHints} />}
 
       {/* Hint banner */}
       {hint && (
@@ -558,9 +559,7 @@ export default function CanvasView({
           );
         })()}
 
-        {showHints && <CanvasHints onDone={dismissHints} />}
-
-      {showColorPicker && (
+        {showColorPicker && (
           <WireColorPicker
             wColor={wColor}
             setWColor={setWColor}
