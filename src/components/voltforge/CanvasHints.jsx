@@ -6,6 +6,7 @@ const HINTS = [
   { emoji: '✋', title: 'Move components', desc: 'Drag any component to reposition it on the canvas.' },
   { emoji: '⏱️', title: 'Edit or delete', desc: 'Long-press a component to select it — then use ✕ to delete or ↻ to rotate.' },
   { emoji: '🤏', title: 'Zoom & pan', desc: 'Pinch to zoom in/out. Drag empty canvas space to pan around.' },
+  { emoji: '⬜', title: 'Select multiple', desc: 'Drag across empty canvas to draw a selection box — grab several components and wires at once to move, copy, or delete them together.' },
 ];
 
 export default function CanvasHints({ onDone }) {
