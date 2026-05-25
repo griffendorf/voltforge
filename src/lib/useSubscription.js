@@ -28,4 +28,4 @@ export function useSubscription() {
   }, []);
 
   return { tier, loading, user };
-          }
+}
