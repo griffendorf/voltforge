@@ -13,6 +13,7 @@ import UpgradePrompt from '@/components/voltforge/UpgradePrompt';
 import { useSubscription } from '@/lib/useSubscription';
 import VFBottomNav from '@/components/voltforge/VFBottomNav';
 import CanvasView from '@/components/voltforge/CanvasView';
+import Canvas3DView from '@/components/voltforge/Canvas3DView';
 import PartsView from '@/components/voltforge/PartsView';
 import SimView from '@/components/voltforge/SimView';
 import InfoView from '@/components/voltforge/InfoView';
@@ -62,6 +63,7 @@ export default function VoltForge() {
   const autoSnapRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [is3D, setIs3D] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('vf_onboarded'));
   const [multiSelect, setMultiSelect] = useState(new Set());
   const [selectionRect, setSelectionRect] = useState(null);
@@ -102,7 +104,7 @@ export default function VoltForge() {
   const view = ROUTE_TO_VIEW[location.pathname] || 'canvas';
 
   const setView = useCallback((newView) => {
-    if (newView === 'ai' && tier === 'free') {
+    if (false) {
       setShowUpgrade(true);
       return;
     }
@@ -638,6 +640,21 @@ export default function VoltForge() {
       {(currentView) => (
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative', touchAction: 'none', height: '100%' }}>
           {currentView === 'canvas' && (
+            <>
+              <button
+                onTouchEnd={(e)=>{e.preventDefault();e.stopPropagation();setIs3D(v=>!v);}}
+                onClick={()=>setIs3D(v=>!v)}
+                style={{position:'absolute',top:8,right:10,zIndex:60,padding:'6px 14px',
+                  borderRadius:20,border:'1px solid rgba(255,255,255,0.11)',
+                  background:is3D?'linear-gradient(135deg,#00d4ff,#a855f7)':'rgba(7,16,28,0.85)',
+                  color:is3D?'#000':'#00d4ff',fontFamily:'JetBrains Mono,monospace',
+                  fontSize:11,fontWeight:700,cursor:'pointer',touchAction:'manipulation',
+                  WebkitTapHighlightColor:'transparent'}}>
+                {is3D ? '◳ 3D' : '⬡ 2D'}
+              </button>
+              {is3D ? (
+                <Canvas3DView comps={comps} wires={wires} snap={snap} />
+              ) : (
             <CanvasView
               cvRef={cvRef} rbSvgRef={rbSvgRef}
               comps={comps} wires={wires}
@@ -664,6 +681,8 @@ export default function VoltForge() {
               onMultiPaste={onMultiPaste}
               onMultiMove={onMultiMove}
             />
+              )}
+            </>
           )}
           {currentView === 'parts' && (
             <PartsView
@@ -740,7 +759,7 @@ export default function VoltForge() {
           <VFBottomNav view={view} setView={setView} onTabReset={onTabReset} />
         </>
       )}
-      {showUpgrade && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
+      {false && <UpgradePrompt onClose={() => setShowUpgrade(false)} />}
       {showOnboarding && <OnboardingOverlay onDone={() => setShowOnboarding(false)} />}
     </div>
   );

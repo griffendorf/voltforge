@@ -1,192 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useSubscription } from '@/lib/useSubscription';
 
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    color: '#888',
-    features: ['Up to 10 components', 'Basic wire colors', 'Circuit simulation', 'Manual save/load'],
-  },
-  {
-    id: 'premium',
-    name: 'Premium',
-    price: '$4.99',
-    period: '/month',
-    color: '#39ff7a',
-    features: ['Unlimited components', 'All wire colors', 'AI circuit assistant', 'Cloud save/load', 'Unlimited undo history', 'Export diagrams', 'Priority support'],
-    badge: '7-DAY FREE TRIAL',
-  },
-];
+const RANK = { free: 0, pro: 1, premium: 2 };
 
-export default function Pricing() {
-  const { tier, loading, user } = useSubscription();
-  const [upgrading, setUpgrading] = useState(null);
-  const [error, setError] = useState('');
+export function useSubscription() {
+  const [tier, setTier] = useState('free');
+  const [paidTier, setPaidTier] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [inTrial, setInTrial] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState(0);
 
-  async function handleUpgrade(plan) {
-    if (!user) { base44.auth.redirectToLogin(window.location.pathname); return; }
-    setUpgrading(plan);
-    setError('');
-    try {
-      const res = await base44.functions.invoke('createCheckout', { plan });
-      if (res.data?.redirectUrl) {
-        window.location.href = res.data.redirectUrl;
-      } else {
-        setError(res.data?.error || 'Something went wrong');
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const me = await base44.auth.me();
+        if (!active) return;
+        setUser(me);
+        setTier(me.tier || 'free');
+        setPaidTier(me.paidTier || null);
+        setInTrial(!!me.inTrial);
+        setTrialDaysLeft(me.trialDaysLeft || 0);
+      } catch {
+        if (active) {
+          setUser(null); setTier('free'); setPaidTier(null);
+          setInTrial(false); setTrialDaysLeft(0);
+        }
+      } finally {
+        if (active) setLoading(false);
       }
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setUpgrading(null);
-    }
-  }
+    })();
+    return () => { active = false; };
+  }, []);
 
-  return (
-    <div style={{
-      height: '100vh', background: '#040709', color: '#c8e8f0',
-      fontFamily: "'JetBrains Mono', monospace",
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      overflowY: 'auto', padding: '20px 12px 28px',
-    }}>
-      <div style={{ width: '100%', maxWidth: 900, marginBottom: 32 }}>
-        <a href="/" style={{ color: '#00d4ff', fontSize: 11, textDecoration: 'none' }}>← Back to VoltForge</a>
-      </div>
+  const hasAccessTo = (required) => (RANK[tier] ?? 0) >= (RANK[required] ?? 0);
 
-      <div style={{ textAlign: 'center', marginBottom: 20 }}>
-        <div style={{
-          fontFamily: "'Orbitron', sans-serif", fontSize: 20, fontWeight: 700,
-          background: 'linear-gradient(90deg,#00d4ff,#39ff7a)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          marginBottom: 10,
-        }}>
-          VoltForge Plans
-        </div>
-        <div style={{ color: '#5a8a9a', fontSize: 10 }}>
-          Try Premium free for 7 days — cancel anytime before you're charged
-        </div>
-        {!loading && tier !== 'free' && (
-          <div style={{
-            marginTop: 12, padding: '6px 18px', borderRadius: 20, display: 'inline-block',
-            background: '#00d4ff18', border: '1px solid #00d4ff44', color: '#00d4ff', fontSize: 10,
-          }}>
-            Current plan: <strong style={{ textTransform: 'uppercase' }}>{tier}</strong>
-          </div>
-        )}
-      </div>
-
-      <div style={{
-        display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center',
-        width: '100%', maxWidth: 900,
-      }}>
-        {PLANS.map(plan => {
-          const isCurrent = tier === plan.id;
-          const isUpgrading = upgrading === plan.id;
-          return (
-            <div key={plan.id} style={{
-              flex: '1 1 240px', maxWidth: 300,
-              background: plan.id === 'premium' ? 'linear-gradient(135deg,#06150e,#0a2e1a)' : '#07101c',
-              border: `1.5px solid ${isCurrent ? plan.color : plan.color + '33'}`,
-              borderRadius: 14, padding: '20px 18px', position: 'relative',
-              boxShadow: isCurrent ? `0 0 20px ${plan.color}44` : plan.id === 'premium' ? `0 0 16px #39ff7a22` : 'none',
-              transition: 'box-shadow .2s',
-            }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-                            background: plan.color, borderRadius: '16px 16px 0 0', opacity: .7 }} />
-
-              {plan.badge && !isCurrent && (
-                <div style={{
-                  position: 'absolute', top: 16, right: 16,
-                  background: plan.color, color: '#000', fontSize: 7, fontWeight: 700,
-                  padding: '2px 8px', borderRadius: 6,
-                }}>
-                  {plan.badge}
-                </div>
-              )}
-              {isCurrent && (
-                <div style={{
-                  position: 'absolute', top: 16, right: 16,
-                  background: plan.color + '22', border: `1px solid ${plan.color}55`,
-                  color: plan.color, fontSize: 7, fontWeight: 700,
-                  padding: '2px 8px', borderRadius: 6,
-                }}>
-                  ✓ ACTIVE
-                </div>
-              )}
-
-              <div style={{ fontSize: 11, fontWeight: 700, color: plan.color, marginBottom: 4 }}>
-                {plan.name}
-              </div>
-              <div style={{ marginBottom: 4 }}>
-                <span style={{ fontSize: 20, fontWeight: 700, color: '#e8f4f8' }}>{plan.price}</span>
-                <span style={{ fontSize: 9, color: '#5a8a9a' }}>{plan.period}</span>
-              </div>
-              {plan.id === 'premium' && (
-                <div style={{ fontSize: 8, color: '#39ff7a', marginBottom: 12 }}>
-                  Free for 7 days, then $4.99/mo
-                </div>
-              )}
-              {plan.id === 'free' && <div style={{ marginBottom: 12 }} />}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-                {plan.features.map(f => (
-                  <div key={f} style={{ fontSize: 9, color: '#9ab8c8', display: 'flex', gap: 6 }}>
-                    <span style={{ color: plan.color }}>✓</span> {f}
-                  </div>
-                ))}
-              </div>
-
-              {plan.id === 'free' ? (
-                <div style={{
-                  textAlign: 'center', padding: '10px', borderRadius: 10,
-                  border: '1px solid #ffffff11', color: '#5a8a9a', fontSize: 10,
-                }}>
-                  {isCurrent ? 'Your current plan' : 'No payment needed'}
-                </div>
-              ) : (
-                <button
-                  onClick={() => handleUpgrade(plan.id)}
-                  disabled={isCurrent || isUpgrading}
-                  style={{
-                    width: '100%', padding: '11px', borderRadius: 10, border: 'none',
-                    background: isCurrent ? plan.color + '22'
-                      : `linear-gradient(135deg, ${plan.color}, ${plan.color}bb)`,
-                    color: isCurrent ? plan.color : '#000',
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700,
-                    cursor: isCurrent ? 'default' : 'pointer',
-                    opacity: isUpgrading ? .7 : 1,
-                    transition: 'opacity .15s',
-                    touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
-                  }}
-                >
-                  {isCurrent ? '✓ Current Plan' : isUpgrading ? '...' : 'Start 7-Day Free Trial'}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {error && (
-        <div style={{ marginTop: 24, color: '#ff4444', fontSize: 11, background: '#ff000011',
-                      border: '1px solid #ff444433', borderRadius: 8, padding: '10px 20px' }}>
-          {error}
-        </div>
-      )}
-
-      <div style={{ marginTop: 40, maxWidth: 420, color: '#5a8a9a', fontSize: 9, textAlign: 'center', lineHeight: 1.8 }}>
-        Your 7-day trial starts the moment you sign up. You won't be charged until day 8.
-        Cancel anytime before then from your account and you'll pay nothing.
-        After the trial, Premium is $4.99/month — cancel whenever you like.
-      </div>
-
-      <div style={{ marginTop: 20, color: '#3a6a7a', fontSize: 9, textAlign: 'center', lineHeight: 2 }}>
-        Payments secured & encrypted · Cancel anytime from your account
-      </div>
-    </div>
-  );
-  
-  
+  return { tier, paidTier, loading, user, inTrial, trialDaysLeft, hasAccessTo };
+}
