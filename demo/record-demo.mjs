@@ -14,82 +14,80 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 
-if (!EMAIL || !PASS) console.log('WARN: DEMO_EMAIL / DEMO_PASSWORD not set as secrets');
+const canvasCount = () =>
+  page.evaluate(() => document.querySelectorAll('canvas').length).catch(() => 0);
 
-await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-await page.waitForTimeout(2500);
-
-// ---- Login ----
 try {
-  await page.fill('input[type="email"]', EMAIL, { timeout: 10000 });
-  await page.fill('input[type="password"]', PASS, { timeout: 10000 });
-  await page.click('button:has-text("Continue")', { timeout: 10000 });
-  console.log('LOGIN: submitted');
-  await page.waitForSelector('canvas', { timeout: 25000 });
-  console.log('LOGIN: canvas appeared -> SUCCESS');
-} catch (e) {
-  console.log('LOGIN ERROR:', e.message);
-  const err = await page
-    .evaluate(() => (document.body ? document.body.innerText.slice(0, 200) : ''))
-    .catch(() => '');
-  console.log('PAGE TEXT:', err.replace(/\s+/g, ' '));
-}
-
-// ---- Onboarding loop: keep skipping until canvas ----
-let inEditor = false;
-for (let i = 0; i < 6; i++) {
-  if (await page.locator('canvas').first().isVisible({ timeout: 3000 }).catch(() => false)) {
-    console.log('ONBOARD: canvas visible after', i, 'steps -> IN EDITOR');
-    inEditor = true;
-    break;
-  }
-  const skip = page.locator('button:has-text("Skip")').first();
-  if (await skip.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await skip.click();
-    console.log('ONBOARD: clicked Skip (round', i + 1, ')');
-    await page.waitForTimeout(2500);
-    continue;
-  }
-  console.log('ONBOARD: no canvas, no Skip (round', i + 1, ') - waiting');
+  await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(2500);
+
+  // ---- Login ----
+  try {
+    await page.fill('input[type="email"]', EMAIL, { timeout: 10000 });
+    await page.fill('input[type="password"]', PASS, { timeout: 10000 });
+    await page.click('button:has-text("Continue")', { timeout: 10000 });
+    console.log('LOGIN: submitted');
+  } catch (e) {
+    console.log('LOGIN: form not found (maybe already in?):', e.message.split('\n')[0]);
+  }
+  await page.waitForTimeout(3000);
+
+  // ---- Onboarding / tutorial skip loop ----
+  for (let i = 0; i < 8; i++) {
+    const n = await canvasCount();
+    const skip = page.locator('button:has-text("Skip")').first();
+    const skipVisible = await skip.isVisible({ timeout: 2000 }).catch(() => false);
+    console.log(`ROUND ${i + 1}: canvases=${n} skipVisible=${skipVisible}`);
+    if (n > 0 && !skipVisible) {
+      console.log('IN EDITOR (canvas present, no overlays)');
+      break;
+    }
+    if (skipVisible) {
+      try {
+        await skip.click({ force: true, timeout: 5000 });
+        console.log(`ROUND ${i + 1}: force-clicked Skip`);
+      } catch (e) {
+        console.log(`ROUND ${i + 1}: click failed, pressing Escape`);
+        await page.keyboard.press('Escape').catch(() => {});
+      }
+    }
+    await page.waitForTimeout(2500);
+  }
+
+  // ---- Inventory editor DOM ----
+  await page.waitForTimeout(2000);
+  const inv = await page.evaluate(() => {
+    const q = (sel) => Array.from(document.querySelectorAll(sel));
+    const label = (el) =>
+      (el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || '')
+        .trim()
+        .slice(0, 40);
+    const cls = (el) => {
+      const c = el.getAttribute('class') || '';
+      return el.id ? '#' + el.id : c ? '.' + c.slice(0, 40) : el.tagName;
+    };
+    return {
+      canvasCount: q('canvas').length,
+      inputs: q('input,textarea').map((el) => ({
+        t: el.getAttribute('type') || el.tagName.toLowerCase(),
+        ph: el.getAttribute('placeholder') || '',
+        al: el.getAttribute('aria-label') || '',
+      })),
+      buttons: q('button,[role=button]').map(label).filter(Boolean).slice(0, 60),
+      voltish: q(
+        '[class*="volt" i],[id*="volt" i],[class*="assistant" i],[class*="widget" i],[class*="prompt" i],[class*="chat" i],[class*="float" i]'
+      )
+        .map(cls)
+        .slice(0, 30),
+    };
+  });
+  console.log('INV ' + JSON.stringify(inv));
+
+  await page.waitForTimeout(4000);
+} catch (e) {
+  console.log('FATAL:', e.message);
+} finally {
+  await context.close(); // always flush the video
+  await browser.close();
+  console.log('recording flushed');
 }
-if (!inEditor) {
-  inEditor = await page.locator('canvas').first().isVisible({ timeout: 15000 }).catch(() => false);
-  console.log('ONBOARD final canvas check:', inEditor);
-}
-
-await page.waitForTimeout(3500);
-
-// ---- Inventory the (now authenticated) editor DOM ----
-const inv = await page.evaluate(() => {
-  const q = (sel) => Array.from(document.querySelectorAll(sel));
-  const label = (el) =>
-    (el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || '')
-      .trim()
-      .slice(0, 40);
-  const cls = (el) => {
-    const c = el.getAttribute('class') || '';
-    return el.id ? '#' + el.id : c ? '.' + c.slice(0, 40) : el.tagName;
-  };
-  return {
-    url: location.href,
-    canvasCount: q('canvas').length,
-    inputs: q('input,textarea').map((el) => ({
-      t: el.getAttribute('type') || el.tagName.toLowerCase(),
-      ph: el.getAttribute('placeholder') || '',
-      al: el.getAttribute('aria-label') || '',
-    })),
-    buttons: q('button,[role=button]').map(label).filter(Boolean).slice(0, 50),
-    voltish: q(
-      '[class*="volt" i],[id*="volt" i],[class*="assistant" i],[class*="widget" i],[class*="prompt" i],[class*="chat" i],[class*="float" i]'
-    )
-      .map(cls)
-      .slice(0, 30),
-  };
-});
-console.log('INV ' + JSON.stringify(inv));
-
-await page.waitForTimeout(2000);
-await context.close();
-await browser.close();
-console.log('probe done');
