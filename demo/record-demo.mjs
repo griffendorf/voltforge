@@ -20,24 +20,17 @@ const page = await context.newPage();
 const clickIf = async (text, opts = {}) => {
   const loc = page.locator(`button:has-text("${text}")`).first();
   if (await loc.isVisible({ timeout: opts.timeout || 2500 }).catch(() => false)) {
-    await loc.click({ force: true, timeout: 5000 }).catch((e) =>
-      console.log(`CLICK FAIL "${text}":`, e.message.split('\n')[0])
-    );
+    try {
+      await loc.click({ timeout: 4000 });
+    } catch {
+      await loc.click({ force: true, timeout: 4000 }).catch((e) =>
+        console.log(`CLICK FAIL "${text}":`, e.message.split('\n')[0])
+      );
+    }
     console.log(`CLICKED "${text}"`);
     return true;
   }
   return false;
-};
-
-const listInputs = async (tag) => {
-  const ins = await page.evaluate(() =>
-    Array.from(document.querySelectorAll('input,textarea')).map((el) => ({
-      t: el.getAttribute('type') || el.tagName.toLowerCase(),
-      ph: el.getAttribute('placeholder') || '',
-    }))
-  );
-  console.log(tag, JSON.stringify(ins));
-  return ins;
 };
 
 try {
@@ -64,31 +57,34 @@ try {
   await clickIf('Skip tutorial');
   await page.waitForTimeout(2000);
 
-  const opened =
-    (await clickIf('Volt·AI')) || (await clickIf('AI', { timeout: 3000 }));
-  console.log('AI OPENED:', opened);
-  await page.waitForTimeout(2500);
+  // ---- Open the AI view via the exact nav button ----
+  const opened = await clickIf('✦AI', { timeout: 4000 });
+  console.log('AI NAV CLICKED:', opened);
 
-  await listInputs('AI-INPUTS');
-  let box = page.locator('textarea').first();
-  if (!(await box.isVisible({ timeout: 3000 }).catch(() => false))) {
-    box = page.locator('input[type="text"], input:not([type])').first();
-  }
-  if (await box.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await box.click({ force: true });
+  // ---- Wait for the real prompt input from AIView.jsx ----
+  const box = page.locator('input[placeholder*="Ask about"]').first();
+  try {
+    await box.waitFor({ state: 'visible', timeout: 12000 });
+    console.log('PROMPT BOX: visible');
+    await box.click();
     await box.fill(PROMPT);
     console.log('PROMPT: filled');
-    let sent = false;
-    for (const t of ['Build', 'Send', 'Ask', 'Go', 'Generate']) {
-      if (await clickIf(t, { timeout: 1500 })) { sent = true; break; }
-    }
-    if (!sent) { await box.press('Enter'); console.log('PROMPT: sent via Enter'); }
-    console.log('PROMPT: submitted, waiting for AI build...');
-    await page.waitForTimeout(45000);
-  } else {
-    console.log('PROMPT BOX NOT FOUND');
+    await box.press('Enter');
+    console.log('PROMPT: sent via Enter, waiting for AI build...');
+    await page.waitForTimeout(50000);
+  } catch (e) {
+    console.log('PROMPT BOX NOT FOUND:', e.message.split('\n')[0]);
+    const btns = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('button')).map((b) =>
+        (b.textContent || '').trim().slice(0, 30)
+      )
+    );
+    console.log('BUTTONS NOW:', JSON.stringify(btns.slice(0, 40)));
   }
 
+  // ---- Switch to canvas to show the built circuit, then run sim ----
+  await clickIf('CANVAS', { timeout: 3000 });
+  await page.waitForTimeout(4000);
   await clickIf('SIM');
   await page.waitForTimeout(1500);
   await clickIf('Run', { timeout: 3000 });
