@@ -44,7 +44,6 @@ try {
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(2500);
 
-  // ---- Login ----
   try {
     await page.fill('input[type="email"]', EMAIL, { timeout: 8000 });
     await page.fill('input[type="password"]', PASS, { timeout: 8000 });
@@ -55,25 +54,21 @@ try {
   }
   await page.waitForTimeout(3000);
 
-  // ---- Onboarding survey (Skip) ----
   for (let i = 0; i < 4; i++) {
     if (!(await clickIf('Skip', { timeout: 2000 }))) break;
     await page.waitForTimeout(2000);
   }
 
-  // ---- Tutorial dismiss ----
   await clickIf('Got it');
   await page.waitForTimeout(1500);
   await clickIf('Skip tutorial');
   await page.waitForTimeout(2000);
 
-  // ---- Open Volt-AI ----
   const opened =
     (await clickIf('Volt·AI')) || (await clickIf('AI', { timeout: 3000 }));
   console.log('AI OPENED:', opened);
   await page.waitForTimeout(2500);
 
-  // ---- Find prompt box and submit ----
   await listInputs('AI-INPUTS');
   let box = page.locator('textarea').first();
   if (!(await box.isVisible({ timeout: 3000 }).catch(() => false))) {
@@ -84,7 +79,7 @@ try {
     await box.fill(PROMPT);
     console.log('PROMPT: filled');
     let sent = false;
-    for (const t of ['Build', 'Send', 'Ask', 'Go', 'Generate', '⚡', '→']) {
+    for (const t of ['Build', 'Send', 'Ask', 'Go', 'Generate']) {
       if (await clickIf(t, { timeout: 1500 })) { sent = true; break; }
     }
     if (!sent) { await box.press('Enter'); console.log('PROMPT: sent via Enter'); }
@@ -94,7 +89,6 @@ try {
     console.log('PROMPT BOX NOT FOUND');
   }
 
-  // ---- Run simulation, hold for the money shot ----
   await clickIf('SIM');
   await page.waitForTimeout(1500);
   await clickIf('Run', { timeout: 3000 });
