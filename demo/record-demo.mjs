@@ -97,10 +97,19 @@ try {
   }
 
   // ---- Show circuit, run sim ----
+  const dismissGuide = async (tag) => {
+    for (let i = 0; i < 3; i++) {
+      if (!(await tap('button:has-text("Got it")', tag + '-gotit'))) break;
+      await page.waitForTimeout(1200);
+    }
+  };
   await tap('button:has-text("CANVAS")', 'nav-canvas');
-  await page.waitForTimeout(4000);
+  await page.waitForTimeout(2000);
+  await dismissGuide('canvas-guide');
+  await page.waitForTimeout(5000);
   await tap('button:has-text("SIM")', 'nav-sim');
   await page.waitForTimeout(1500);
+  await dismissGuide('sim-guide');
   await tap('button:has-text("Run")', 'sim-run');
   await tap('button:has-text("Start")', 'sim-start');
   console.log('SIM: holding 15s');
