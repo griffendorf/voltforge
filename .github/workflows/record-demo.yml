@@ -24,6 +24,9 @@ jobs:
 
       - name: Record
         run: node record-demo.mjs
+        env:
+          DEMO_EMAIL: ${{ secrets.DEMO_EMAIL }}
+          DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
 
       - name: Upload video
         uses: actions/upload-artifact@v4
