@@ -3,6 +3,9 @@ import { chromium } from 'playwright';
 const URL = process.env.DEMO_URL || 'https://www.voltforgeai.com';
 const EMAIL = process.env.DEMO_EMAIL || '';
 const PASS = process.env.DEMO_PASSWORD || '';
+const PROMPT =
+  process.env.DEMO_PROMPT ||
+  'Build a 555 timer LED blinker circuit with a 9V battery';
 
 const browser = await chromium.launch();
 const context = await browser.newContext({
@@ -14,8 +17,28 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 
-const canvasCount = () =>
-  page.evaluate(() => document.querySelectorAll('canvas').length).catch(() => 0);
+const clickIf = async (text, opts = {}) => {
+  const loc = page.locator(`button:has-text("${text}")`).first();
+  if (await loc.isVisible({ timeout: opts.timeout || 2500 }).catch(() => false)) {
+    await loc.click({ force: true, timeout: 5000 }).catch((e) =>
+      console.log(`CLICK FAIL "${text}":`, e.message.split('\n')[0])
+    );
+    console.log(`CLICKED "${text}"`);
+    return true;
+  }
+  return false;
+};
+
+const listInputs = async (tag) => {
+  const ins = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('input,textarea')).map((el) => ({
+      t: el.getAttribute('type') || el.tagName.toLowerCase(),
+      ph: el.getAttribute('placeholder') || '',
+    }))
+  );
+  console.log(tag, JSON.stringify(ins));
+  return ins;
+};
 
 try {
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -23,71 +46,65 @@ try {
 
   // ---- Login ----
   try {
-    await page.fill('input[type="email"]', EMAIL, { timeout: 10000 });
-    await page.fill('input[type="password"]', PASS, { timeout: 10000 });
-    await page.click('button:has-text("Continue")', { timeout: 10000 });
+    await page.fill('input[type="email"]', EMAIL, { timeout: 8000 });
+    await page.fill('input[type="password"]', PASS, { timeout: 8000 });
+    await page.click('button:has-text("Continue")', { timeout: 8000 });
     console.log('LOGIN: submitted');
-  } catch (e) {
-    console.log('LOGIN: form not found (maybe already in?):', e.message.split('\n')[0]);
+  } catch {
+    console.log('LOGIN: form not shown (already in?)');
   }
   await page.waitForTimeout(3000);
 
-  // ---- Onboarding / tutorial skip loop ----
-  for (let i = 0; i < 8; i++) {
-    const n = await canvasCount();
-    const skip = page.locator('button:has-text("Skip")').first();
-    const skipVisible = await skip.isVisible({ timeout: 2000 }).catch(() => false);
-    console.log(`ROUND ${i + 1}: canvases=${n} skipVisible=${skipVisible}`);
-    if (n > 0 && !skipVisible) {
-      console.log('IN EDITOR (canvas present, no overlays)');
-      break;
-    }
-    if (skipVisible) {
-      try {
-        await skip.click({ force: true, timeout: 5000 });
-        console.log(`ROUND ${i + 1}: force-clicked Skip`);
-      } catch (e) {
-        console.log(`ROUND ${i + 1}: click failed, pressing Escape`);
-        await page.keyboard.press('Escape').catch(() => {});
-      }
-    }
-    await page.waitForTimeout(2500);
+  // ---- Onboarding survey (Skip) ----
+  for (let i = 0; i < 4; i++) {
+    if (!(await clickIf('Skip', { timeout: 2000 }))) break;
+    await page.waitForTimeout(2000);
   }
 
-  // ---- Inventory editor DOM ----
+  // ---- Tutorial dismiss ----
+  await clickIf('Got it');
+  await page.waitForTimeout(1500);
+  await clickIf('Skip tutorial');
   await page.waitForTimeout(2000);
-  const inv = await page.evaluate(() => {
-    const q = (sel) => Array.from(document.querySelectorAll(sel));
-    const label = (el) =>
-      (el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || '')
-        .trim()
-        .slice(0, 40);
-    const cls = (el) => {
-      const c = el.getAttribute('class') || '';
-      return el.id ? '#' + el.id : c ? '.' + c.slice(0, 40) : el.tagName;
-    };
-    return {
-      canvasCount: q('canvas').length,
-      inputs: q('input,textarea').map((el) => ({
-        t: el.getAttribute('type') || el.tagName.toLowerCase(),
-        ph: el.getAttribute('placeholder') || '',
-        al: el.getAttribute('aria-label') || '',
-      })),
-      buttons: q('button,[role=button]').map(label).filter(Boolean).slice(0, 60),
-      voltish: q(
-        '[class*="volt" i],[id*="volt" i],[class*="assistant" i],[class*="widget" i],[class*="prompt" i],[class*="chat" i],[class*="float" i]'
-      )
-        .map(cls)
-        .slice(0, 30),
-    };
-  });
-  console.log('INV ' + JSON.stringify(inv));
 
-  await page.waitForTimeout(4000);
+  // ---- Open Volt-AI ----
+  const opened =
+    (await clickIf('Volt·AI')) || (await clickIf('AI', { timeout: 3000 }));
+  console.log('AI OPENED:', opened);
+  await page.waitForTimeout(2500);
+
+  // ---- Find prompt box and submit ----
+  await listInputs('AI-INPUTS');
+  let box = page.locator('textarea').first();
+  if (!(await box.isVisible({ timeout: 3000 }).catch(() => false))) {
+    box = page.locator('input[type="text"], input:not([type])').first();
+  }
+  if (await box.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await box.click({ force: true });
+    await box.fill(PROMPT);
+    console.log('PROMPT: filled');
+    let sent = false;
+    for (const t of ['Build', 'Send', 'Ask', 'Go', 'Generate', '⚡', '→']) {
+      if (await clickIf(t, { timeout: 1500 })) { sent = true; break; }
+    }
+    if (!sent) { await box.press('Enter'); console.log('PROMPT: sent via Enter'); }
+    console.log('PROMPT: submitted, waiting for AI build...');
+    await page.waitForTimeout(45000);
+  } else {
+    console.log('PROMPT BOX NOT FOUND');
+  }
+
+  // ---- Run simulation, hold for the money shot ----
+  await clickIf('SIM');
+  await page.waitForTimeout(1500);
+  await clickIf('Run', { timeout: 3000 });
+  await clickIf('Start', { timeout: 2000 });
+  console.log('SIM: holding 15s');
+  await page.waitForTimeout(15000);
 } catch (e) {
   console.log('FATAL:', e.message);
 } finally {
-  await context.close(); // always flush the video
+  await context.close();
   await browser.close();
   console.log('recording flushed');
 }
