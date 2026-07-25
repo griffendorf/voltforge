@@ -35,6 +35,28 @@ try {
   console.log('PAGE TEXT:', err.replace(/\s+/g, ' '));
 }
 
+// ---- Onboarding (if shown) ----
+try {
+  const onboard = page.locator('text=What brings you to VoltForge');
+  if (await onboard.isVisible({ timeout: 5000 }).catch(() => false)) {
+    console.log('ONBOARD: screen detected');
+    const build = page.locator('button', { hasText: 'Building real circuits' });
+    if (await build.isVisible().catch(() => false)) {
+      await build.click();
+      console.log('ONBOARD: clicked "Building real circuits"');
+    } else {
+      await page.click('button:has-text("Skip")');
+      console.log('ONBOARD: clicked Skip');
+    }
+    await page.waitForSelector('canvas', { timeout: 25000 });
+    console.log('ONBOARD: canvas appeared -> IN EDITOR');
+  } else {
+    console.log('ONBOARD: not shown');
+  }
+} catch (e) {
+  console.log('ONBOARD ERROR:', e.message);
+}
+
 await page.waitForTimeout(3500);
 
 // ---- Inventory the (now authenticated) editor DOM ----
