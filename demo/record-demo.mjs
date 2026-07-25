@@ -35,26 +35,27 @@ try {
   console.log('PAGE TEXT:', err.replace(/\s+/g, ' '));
 }
 
-// ---- Onboarding (if shown) ----
-try {
-  const onboard = page.locator('text=What brings you to VoltForge');
-  if (await onboard.isVisible({ timeout: 5000 }).catch(() => false)) {
-    console.log('ONBOARD: screen detected');
-    const build = page.locator('button', { hasText: 'Building real circuits' });
-    if (await build.isVisible().catch(() => false)) {
-      await build.click();
-      console.log('ONBOARD: clicked "Building real circuits"');
-    } else {
-      await page.click('button:has-text("Skip")');
-      console.log('ONBOARD: clicked Skip');
-    }
-    await page.waitForSelector('canvas', { timeout: 25000 });
-    console.log('ONBOARD: canvas appeared -> IN EDITOR');
-  } else {
-    console.log('ONBOARD: not shown');
+// ---- Onboarding loop: keep skipping until canvas ----
+let inEditor = false;
+for (let i = 0; i < 6; i++) {
+  if (await page.locator('canvas').first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    console.log('ONBOARD: canvas visible after', i, 'steps -> IN EDITOR');
+    inEditor = true;
+    break;
   }
-} catch (e) {
-  console.log('ONBOARD ERROR:', e.message);
+  const skip = page.locator('button:has-text("Skip")').first();
+  if (await skip.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await skip.click();
+    console.log('ONBOARD: clicked Skip (round', i + 1, ')');
+    await page.waitForTimeout(2500);
+    continue;
+  }
+  console.log('ONBOARD: no canvas, no Skip (round', i + 1, ') - waiting');
+  await page.waitForTimeout(2500);
+}
+if (!inEditor) {
+  inEditor = await page.locator('canvas').first().isVisible({ timeout: 15000 }).catch(() => false);
+  console.log('ONBOARD final canvas check:', inEditor);
 }
 
 await page.waitForTimeout(3500);
