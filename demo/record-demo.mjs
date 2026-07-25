@@ -17,21 +17,21 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 
-const clickIf = async (text, opts = {}) => {
-  const loc = page.locator(`button:has-text("${text}")`).first();
-  if (await loc.isVisible({ timeout: opts.timeout || 2500 }).catch(() => false)) {
-    try {
-      await loc.click({ timeout: 4000 });
-    } catch {
-      await loc.click({ force: true, timeout: 4000 }).catch((e) =>
-        console.log(`CLICK FAIL "${text}":`, e.message.split('\n')[0])
-      );
-    }
-    console.log(`CLICKED "${text}"`);
+// dispatchEvent('click') reaches React handlers even under overlays
+const tap = async (selector, name) => {
+  const loc = page.locator(selector).first();
+  if (await loc.count().catch(() => 0)) {
+    await loc.dispatchEvent('click').catch((e) =>
+      console.log(`TAP FAIL ${name}:`, e.message.split('\n')[0])
+    );
+    console.log(`TAP ${name}`);
     return true;
   }
   return false;
 };
+
+const gone = async (selector) =>
+  (await page.locator(selector).count().catch(() => 0)) === 0;
 
 try {
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -47,24 +47,38 @@ try {
   }
   await page.waitForTimeout(3000);
 
-  for (let i = 0; i < 4; i++) {
-    if (!(await clickIf('Skip', { timeout: 2000 }))) break;
+  // ---- Onboarding quiz: Skip until quiz screens are gone ----
+  for (let i = 0; i < 6; i++) {
+    const quizSkip = 'button:text-is("Skip")';
+    if (await gone(quizSkip)) break;
+    await tap(quizSkip, `quiz-skip-${i + 1}`);
     await page.waitForTimeout(2000);
   }
 
-  await clickIf('Got it');
+  // ---- Manual modal: scoped dismiss ----
+  const modalSkip =
+    'div:has(h2:has-text("Welcome to VoltForge")) button:has-text("Skip")';
+  for (let i = 0; i < 3; i++) {
+    if (await gone(modalSkip)) break;
+    await tap(modalSkip, 'manual-modal-skip');
+    await page.waitForTimeout(1500);
+  }
+  console.log('MANUAL MODAL gone:', await gone(modalSkip));
+
+  // ---- Tutorial coach marks ----
+  await tap('button:has-text("Got it")', 'tutorial-gotit');
+  await page.waitForTimeout(1200);
+  await tap('button:has-text("Skip tutorial")', 'tutorial-skip');
   await page.waitForTimeout(1500);
-  await clickIf('Skip tutorial');
-  await page.waitForTimeout(2000);
+  console.log('TUTORIAL gone:', await gone('button:has-text("Skip tutorial")'));
 
-  // ---- Open the AI view via the exact nav button ----
-  const opened = await clickIf('✦AI', { timeout: 4000 });
-  console.log('AI NAV CLICKED:', opened);
+  // ---- Open AI view ----
+  await tap('button:has-text("✦AI")', 'nav-AI');
 
-  // ---- Wait for the real prompt input from AIView.jsx ----
-  const box = page.locator('input[placeholder*="Ask about"]').first();
+  // ---- Prompt (matches AIView and FloatingAIWidget placeholders) ----
+  const box = page.locator('input[placeholder*="about your circuit"]').first();
   try {
-    await box.waitFor({ state: 'visible', timeout: 12000 });
+    await box.waitFor({ state: 'visible', timeout: 15000 });
     console.log('PROMPT BOX: visible');
     await box.click();
     await box.fill(PROMPT);
@@ -82,13 +96,13 @@ try {
     console.log('BUTTONS NOW:', JSON.stringify(btns.slice(0, 40)));
   }
 
-  // ---- Switch to canvas to show the built circuit, then run sim ----
-  await clickIf('CANVAS', { timeout: 3000 });
+  // ---- Show circuit, run sim ----
+  await tap('button:has-text("CANVAS")', 'nav-canvas');
   await page.waitForTimeout(4000);
-  await clickIf('SIM');
+  await tap('button:has-text("SIM")', 'nav-sim');
   await page.waitForTimeout(1500);
-  await clickIf('Run', { timeout: 3000 });
-  await clickIf('Start', { timeout: 2000 });
+  await tap('button:has-text("Run")', 'sim-run');
+  await tap('button:has-text("Start")', 'sim-start');
   console.log('SIM: holding 15s');
   await page.waitForTimeout(15000);
 } catch (e) {
