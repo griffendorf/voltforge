@@ -107,21 +107,22 @@ try {
         await page.mouse.click(120, 620);
         console.log(tag + ': backdrop mouse click');
       }
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(900);
     }
     console.log(tag + ': guide still present after retries');
   };
   await tap('button:has-text("CANVAS")', 'nav-canvas');
   await page.waitForTimeout(2000);
   await dismissGuide('canvas-guide');
-  await page.waitForTimeout(5000);
+  console.log('HOLDING on circuit 12s');
+  await page.waitForTimeout(12000);
   await tap('button:has-text("SIM")', 'nav-sim');
   await page.waitForTimeout(1500);
   await dismissGuide('sim-guide');
   await tap('button:has-text("Run")', 'sim-run');
   await tap('button:has-text("Start")', 'sim-start');
-  console.log('SIM: holding 15s');
-  await page.waitForTimeout(15000);
+  console.log('SIM: holding 20s');
+  await page.waitForTimeout(20000);
 } catch (e) {
   console.log('FATAL:', e.message);
 } finally {
