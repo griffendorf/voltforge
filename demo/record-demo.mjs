@@ -98,10 +98,18 @@ try {
 
   // ---- Show circuit, run sim ----
   const dismissGuide = async (tag) => {
-    for (let i = 0; i < 3; i++) {
-      if (!(await tap('button:has-text("Got it")', tag + '-gotit'))) break;
-      await page.waitForTimeout(1200);
+    for (let i = 0; i < 4; i++) {
+      const present = (await page.locator('button:has-text("Got it")').count().catch(() => 0)) > 0;
+      if (!present) { console.log(tag + ': guide gone'); return; }
+      if (i % 2 === 0) {
+        await tap('button:has-text("Got it")', tag + '-gotit');
+      } else {
+        await page.mouse.click(120, 620);
+        console.log(tag + ': backdrop mouse click');
+      }
+      await page.waitForTimeout(1500);
     }
+    console.log(tag + ': guide still present after retries');
   };
   await tap('button:has-text("CANVAS")', 'nav-canvas');
   await page.waitForTimeout(2000);
