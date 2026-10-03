@@ -12,6 +12,9 @@ on:
       view:
         description: 'desktop (1280x720, full circuit) or phone (390x844)'
         default: 'desktop'
+      zoom:
+        description: 'Number of zoom-in taps after load (0 = whole circuit)'
+        default: '0'
 
 jobs:
   record:
@@ -41,6 +44,7 @@ jobs:
           DEMO_NAME: ${{ inputs.demo }}
           DEMO_SECONDS: ${{ inputs.seconds }}
           DEMO_VIEW: ${{ inputs.view }}
+          DEMO_ZOOM: ${{ inputs.zoom }}
 
       - name: Convert to mp4 (vertical 1080x1920 + landscape 1920x1080)
         run: |
