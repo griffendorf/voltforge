@@ -9,6 +9,9 @@ on:
       seconds:
         description: 'Seconds to hold on the timeline'
         default: '45'
+      view:
+        description: 'desktop (1280x720, full circuit) or phone (390x844)'
+        default: 'desktop'
 
 jobs:
   record:
@@ -30,21 +33,21 @@ jobs:
           npx playwright install --with-deps chromium
           sudo apt-get install -y ffmpeg >/dev/null
 
-      - name: Record (phone 390x844)
+      - name: Record
         run: node record-play.mjs
         env:
           DEMO_EMAIL: ${{ secrets.DEMO_EMAIL }}
           DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
           DEMO_NAME: ${{ inputs.demo }}
           DEMO_SECONDS: ${{ inputs.seconds }}
-          DEMO_VIEW: phone
+          DEMO_VIEW: ${{ inputs.view }}
 
       - name: Convert to mp4 (vertical 1080x1920 + landscape 1920x1080)
         run: |
           f=$(ls -t videos/*.webm | head -1)
           n="voltforge-${{ inputs.demo }}"
-          ffmpeg -y -i "$f" -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=0x0b0f1a,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-vertical.mp4"
-          ffmpeg -y -i "$f" -vf "scale=-2:1080,pad=1920:1080:(ow-iw)/2:0:color=0x0b0f1a,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-landscape.mp4"
+          ffmpeg -y -i "$f" -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2,eq=brightness=-0.15[bg];[0:v]scale=1080:1920:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-vertical.mp4"
+          ffmpeg -y -i "$f" -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0b0f1a,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-landscape.mp4"
           ls -la videos
 
       - name: Upload videos

@@ -14,7 +14,8 @@ const size = PHONE ? { width: 390, height: 844 } : { width: 1280, height: 720 };
 const ua = PHONE
   ? 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36'
   : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-const base = { viewport: size, userAgent: ua, isMobile: PHONE, hasTouch: PHONE, deviceScaleFactor: 1 };
+const base = { viewport: size, userAgent: ua, isMobile: PHONE, hasTouch: PHONE, deviceScaleFactor: 2 };
+const REC = PHONE ? { width: 780, height: 1688 } : { width: 1920, height: 1080 };
 
 const browser = await chromium.launch();
 
@@ -73,7 +74,7 @@ try {
   console.log('STATE saved: origins', state.origins.length, 'cookies', state.cookies.length);
 
   // ---- Pass 2: recorded ----
-  const ctx2 = await browser.newContext({ ...base, storageState: state, recordVideo: { dir: 'videos', size } });
+  const ctx2 = await browser.newContext({ ...base, storageState: state, recordVideo: { dir: 'videos', size: REC } });
   const p2 = await ctx2.newPage();
   const demoUrl = `${URL}/?demo=${encodeURIComponent(DEMO)}`;
   console.log('DEMO URL:', demoUrl);
