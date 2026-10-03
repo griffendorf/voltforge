@@ -8,7 +8,7 @@ on:
         default: '555-blinker'
       seconds:
         description: 'Seconds to hold on the timeline'
-        default: '45'
+        default: '20'
       view:
         description: 'desktop (1280x720, full circuit) or phone (390x844)'
         default: 'desktop'

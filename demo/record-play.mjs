@@ -14,8 +14,9 @@ const size = PHONE ? { width: 390, height: 844 } : { width: 1280, height: 720 };
 const ua = PHONE
   ? 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36'
   : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-const base = { viewport: size, userAgent: ua, isMobile: PHONE, hasTouch: PHONE, deviceScaleFactor: 2 };
-const REC = PHONE ? { width: 780, height: 1688 } : { width: 1920, height: 1080 };
+const base = { viewport: size, userAgent: ua, isMobile: PHONE, hasTouch: PHONE, deviceScaleFactor: 1 };
+const REC = size; // record at viewport size; ffmpeg upscales (avoids gray padding)
+const ZOOM_IN = parseInt(process.env.DEMO_ZOOM || '2', 10);
 
 const browser = await chromium.launch();
 
@@ -76,11 +77,21 @@ try {
   // ---- Pass 2: recorded ----
   const ctx2 = await browser.newContext({ ...base, storageState: state, recordVideo: { dir: 'videos', size: REC } });
   const p2 = await ctx2.newPage();
+  // hide the Demo mode / Sign up bar in the recording only
+  await p2.addInitScript(() => {
+    setInterval(() => {
+      document.querySelectorAll('div').forEach((d) => {
+        const t = d.textContent || '';
+        if (t.length < 90 && t.includes('Demo mode') && t.includes('Sign up')) d.style.visibility = 'hidden';
+      });
+    }, 150);
+  });
   const demoUrl = `${URL}/?demo=${encodeURIComponent(DEMO)}`;
   console.log('DEMO URL:', demoUrl);
   await p2.goto(demoUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await p2.waitForTimeout(1500);
   await clearOverlays(p2, 'p2');
+  for (let i = 0; i < ZOOM_IN; i++) { await mkTap(p2)('button:text-is("＋")', `zoom-in-${i + 1}`); await p2.waitForTimeout(250); }
   const btns = await p2.evaluate(() => Array.from(document.querySelectorAll('button')).map((b) => (b.textContent || '').trim().slice(0, 25)));
   console.log('BUTTONS:', JSON.stringify(btns.slice(0, 30)));
   console.log(`HOLDING ${SECONDS}s for timeline`);
