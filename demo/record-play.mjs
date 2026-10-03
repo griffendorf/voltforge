@@ -1,14 +1,17 @@
 import { chromium } from 'playwright';
+import fs from 'node:fs';
 
 // Records a DemoPlayer timeline (?demo=<name>) with no login/onboarding in the clip.
 // Pass 1 (not recorded): log in + clear onboarding, save storage state.
-// Pass 2 (recorded): load /?demo=<name> with that state, hold DEMO_SECONDS.
+// Pass 2 (recorded): load /?demo=<name>, log caption times for narration, hold until done.
 const URL = (process.env.DEMO_URL || 'https://www.voltforgeai.com').replace(/\/$/, '');
 const EMAIL = process.env.DEMO_EMAIL || '';
 const PASS = process.env.DEMO_PASSWORD || '';
 const DEMO = process.env.DEMO_NAME || '555-blinker';
-const SECONDS = parseInt(process.env.DEMO_SECONDS || '45', 10);
-const PHONE = (process.env.DEMO_VIEW || 'phone') === 'phone';
+const SEC_RAW = String(process.env.DEMO_SECONDS || 'auto');
+const AUTO = SEC_RAW === 'auto';
+const SECONDS = AUTO ? 240 : parseInt(SEC_RAW, 10);
+const PHONE = (process.env.DEMO_VIEW || 'desktop') === 'phone';
 
 const size = PHONE ? { width: 390, height: 844 } : { width: 1280, height: 720 };
 const ua = PHONE
@@ -16,7 +19,7 @@ const ua = PHONE
   : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const base = { viewport: size, userAgent: ua, isMobile: PHONE, hasTouch: PHONE, deviceScaleFactor: 1 };
 const REC = size; // record at viewport size; ffmpeg upscales (avoids gray padding)
-const ZOOM_IN = parseInt(process.env.DEMO_ZOOM || '2', 10);
+const ZOOM_IN = parseInt(process.env.DEMO_ZOOM || '0', 10);
 
 const browser = await chromium.launch();
 
@@ -53,6 +56,7 @@ const clearOverlays = async (page, tag) => {
 };
 
 let state;
+const caps = [];
 try {
   // ---- Pass 1: login, not recorded ----
   const ctx1 = await browser.newContext(base);
@@ -77,6 +81,12 @@ try {
   // ---- Pass 2: recorded ----
   const ctx2 = await browser.newContext({ ...base, storageState: state, recordVideo: { dir: 'videos', size: REC } });
   const p2 = await ctx2.newPage();
+  const t0 = Date.now(); // ~video start
+  await p2.exposeFunction('__vfOnCaption', (i, caption, say) => {
+    const t = (Date.now() - t0) / 1000;
+    caps.push({ i, t, caption, say });
+    console.log(`CAP ${i} @${t.toFixed(2)}s ${caption}`);
+  });
   // hide the Demo mode / Sign up bar in the recording only
   await p2.addInitScript(() => {
     setInterval(() => {
@@ -92,12 +102,19 @@ try {
   await p2.waitForTimeout(1500);
   await clearOverlays(p2, 'p2');
   for (let i = 0; i < ZOOM_IN; i++) { await mkTap(p2)('button:text-is("＋")', `zoom-in-${i + 1}`); await p2.waitForTimeout(250); }
-  const btns = await p2.evaluate(() => Array.from(document.querySelectorAll('button')).map((b) => (b.textContent || '').trim().slice(0, 25)));
-  console.log('BUTTONS:', JSON.stringify(btns.slice(0, 30)));
-  console.log(`HOLDING ${SECONDS}s for timeline`);
-  await p2.waitForTimeout(SECONDS * 1000);
+  if (AUTO) {
+    console.log('HOLDING until timeline done (max 240s)');
+    await p2.waitForFunction(() => window.__vfDemoDone === true, null, { timeout: 240000, polling: 250 })
+      .catch(() => console.log('WARN: timeline did not report done'));
+    await p2.waitForTimeout(1200);
+  } else {
+    console.log(`HOLDING ${SECONDS}s for timeline`);
+    await p2.waitForTimeout(SECONDS * 1000);
+  }
   await p2.screenshot({ path: 'videos/last-frame.png' });
   await ctx2.close();
+  fs.writeFileSync('videos/captions.json', JSON.stringify(caps, null, 1));
+  console.log('CAPTIONS logged:', caps.length);
 } catch (e) {
   console.log('FATAL:', e.message);
   process.exitCode = 1;

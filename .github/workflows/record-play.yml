@@ -5,16 +5,19 @@ on:
     inputs:
       demo:
         description: 'DemoPlayer timeline name (?demo=)'
-        default: '555-blinker'
+        default: '555-oneshot'
       seconds:
-        description: 'Seconds to hold on the timeline'
-        default: '20'
+        description: 'Seconds to hold, or auto (wait for timeline to finish)'
+        default: 'auto'
       view:
         description: 'desktop (1280x720, full circuit) or phone (390x844)'
         default: 'desktop'
       zoom:
         description: 'Number of zoom-in taps after load (0 = whole circuit)'
         default: '0'
+      voice:
+        description: 'Piper voice (path under rhasspy/piper-voices), or none'
+        default: 'en/en_US/ryan/high/en_US-ryan-high'
 
 jobs:
   record:
@@ -50,8 +53,26 @@ jobs:
         run: |
           f=$(ls -t videos/*.webm | head -1)
           n="voltforge-${{ inputs.demo }}"
-          ffmpeg -y -i "$f" -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2,eq=brightness=-0.15[bg];[0:v]scale=1080:1920:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-vertical.mp4"
-          ffmpeg -y -i "$f" -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0b0f1a,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-landscape.mp4"
+          ffmpeg -y -loglevel error -i "$f" -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2,eq=brightness=-0.15[bg];[0:v]scale=1080:1920:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-vertical.mp4"
+          ffmpeg -y -loglevel error -i "$f" -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0b0f1a,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-landscape.mp4"
+          ls -la videos
+
+      - name: Narration (Piper TTS, synced to captions)
+        if: ${{ inputs.voice != 'none' }}
+        run: |
+          set -e
+          curl -sSL -o piper.tgz https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz
+          tar xzf piper.tgz
+          V="${{ inputs.voice }}"
+          curl -sSL -o voice.onnx "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/${V}.onnx"
+          curl -sSL -o voice.onnx.json "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/${V}.onnx.json"
+          python3 narrate.py ./piper/piper voice.onnx videos/narration.wav
+          if [ -f videos/narration.wav ]; then
+            for f in videos/*.mp4; do
+              ffmpeg -y -loglevel error -i "$f" -i videos/narration.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 160k -af apad -shortest -movflags +faststart "${f%.mp4}.tmp.mp4"
+              mv "${f%.mp4}.tmp.mp4" "$f"
+            done
+          fi
           ls -la videos
 
       - name: Upload videos
@@ -61,4 +82,5 @@ jobs:
           path: |
             demo/videos/*.mp4
             demo/videos/last-frame.png
+            demo/videos/captions.json
           if-no-files-found: error
