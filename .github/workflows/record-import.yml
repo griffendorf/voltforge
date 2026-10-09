@@ -1,0 +1,82 @@
+name: Record Import Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      images:
+        description: 'Images in demo/ to import, in order (comma separated)'
+        default: 'board.jpg,schematic.png'
+      view:
+        description: 'desktop (1280x720) or phone (390x844)'
+        default: 'desktop'
+      step_max:
+        description: 'Max seconds to wait for each import'
+        default: '150'
+      voice:
+        description: 'Piper voice (path under rhasspy/piper-voices), or none'
+        default: 'en/en_US/ryan/high/en_US-ryan-high'
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: demo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright + ffmpeg
+        run: |
+          npm init -y >/dev/null
+          npm i -D playwright
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y ffmpeg >/dev/null
+
+      - name: Record
+        run: node record-import.mjs
+        env:
+          DEMO_EMAIL: ${{ secrets.DEMO_EMAIL }}
+          DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+          DEMO_IMAGES: ${{ inputs.images }}
+          DEMO_VIEW: ${{ inputs.view }}
+          DEMO_STEP_MAX: ${{ inputs.step_max }}
+
+      - name: Convert to mp4 (vertical 1080x1920 + landscape 1920x1080)
+        run: |
+          f=$(ls -t videos/*.webm | head -1)
+          n="voltforge-import"
+          ffmpeg -y -loglevel error -i "$f" -filter_complex "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=24:2,eq=brightness=-0.15[bg];[0:v]scale=1080:1920:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-vertical.mp4"
+          ffmpeg -y -loglevel error -i "$f" -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0b0f1a,fps=30" -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart -an "videos/${n}-landscape.mp4"
+          ls -la videos
+
+      - name: Narration (Piper TTS, synced to captions)
+        if: ${{ inputs.voice != 'none' }}
+        run: |
+          set -e
+          curl -sSL -o piper.tgz https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz
+          tar xzf piper.tgz
+          V="${{ inputs.voice }}"
+          curl -sSL -o voice.onnx "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/${V}.onnx"
+          curl -sSL -o voice.onnx.json "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/${V}.onnx.json"
+          python3 narrate.py ./piper/piper voice.onnx videos/narration.wav
+          if [ -f videos/narration.wav ]; then
+            for f in videos/*.mp4; do
+              ffmpeg -y -loglevel error -i "$f" -i videos/narration.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 160k -af apad -shortest -movflags +faststart "${f%.mp4}.tmp.mp4"
+              mv "${f%.mp4}.tmp.mp4" "$f"
+            done
+          fi
+          ls -la videos
+
+      - name: Upload videos
+        uses: actions/upload-artifact@v4
+        with:
+          name: voltforge-import-demo
+          path: |
+            demo/videos/*.mp4
+            demo/videos/*.png
+            demo/videos/captions.json
+          if-no-files-found: error

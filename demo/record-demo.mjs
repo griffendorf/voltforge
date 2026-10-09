@@ -40,7 +40,8 @@ try {
   try {
     await page.fill('input[type="email"]', EMAIL, { timeout: 8000 });
     await page.fill('input[type="password"]', PASS, { timeout: 8000 });
-    await page.click('button:has-text("Continue")', { timeout: 8000 });
+    await page.locator('button', { hasText: /^\s*(Sign in|Continue|Log in)/ }).first().click({ timeout: 8000 })
+        .catch(() => page.press('input[type="password"]', 'Enter'));
     console.log('LOGIN: submitted');
   } catch {
     console.log('LOGIN: form not shown (already in?)');
