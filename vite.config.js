@@ -5,6 +5,8 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
+  // src/live/app.js already contains Vite's modulepreload polyfill (it is the recovered Oct 10 bundle)
+  build: { modulePreload: { polyfill: false } },
   plugins: [
     base44({
       // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.

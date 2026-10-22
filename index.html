@@ -2,13 +2,83 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="https://base44.com/logo_v2.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.json" />
-    <title>Base44 APP</title>
+    <title>VoltForge — AI Circuit Simulator with Built-In Assistant</title>
+    <meta name="description" content="Browser-based circuit simulator with Volt·AI, a built-in assistant that builds and debugs circuits from plain English. 2D, 3D and breadboard views. Free plan available." />
+    <meta property="og:title" content="VoltForge — AI Circuit Simulator with Built-In Assistant" />
+    <meta property="og:description" content="Describe a circuit and Volt·AI builds it. Simulate in 2D, 3D, schematic and breadboard views, then export to KiCad and Gerber." />
+    <meta property="og:url" content="https://www.voltforgeai.com" />
+    <meta property="og:type" content="website" />
+      <link rel="canonical" href="https://www.voltforgeai.com/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="VoltForge — AI Circuit Simulator with Built-In Assistant" />
+    <meta name="twitter:description" content="Describe a circuit and Volt·AI builds it. Simulate in 2D, 3D, schematic and breadboard views, then export to KiCad and Gerber." />
+    <meta property="og:site_name" content="VoltForge" />
+    <meta property="og:image" content="https://www.voltforgeai.com/feature-graphic.png" />
+    <meta name="twitter:image" content="https://www.voltforgeai.com/feature-graphic.png" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "VoltForge",
+      "applicationCategory": "EducationalApplication",
+      "applicationSubCategory": "Circuit Simulator",
+      "operatingSystem": "Web, Android",
+      "url": "https://www.voltforgeai.com/",
+      "image": "https://www.voltforgeai.com/feature-graphic.png",
+      "description": "Browser-based circuit simulator with Volt·AI, a built-in assistant that builds and debugs circuits from plain English. 2D, 3D and breadboard views. Free plan available.",
+      "featureList": [
+        "Volt·AI assistant: build, explain and debug circuits from plain English",
+        "Real-time voltage and current simulation",
+        "2D, 3D, schematic and breadboard views",
+        "Import a circuit from an image or PDF",
+        "PCB export to KiCad and Gerber"
+      ],
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Free",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro",
+          "price": "4.99",
+          "priceCurrency": "USD"
+        },
+        {
+          "@type": "Offer",
+          "name": "Premium",
+          "price": "9.99",
+          "priceCurrency": "USD"
+        }
+      ]
+    }
+    </script>
+      <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"WebSite","name":"VoltForge","alternateName":["VoltForge AI","voltforgeai"],"url":"https://www.voltforgeai.com/"}
+    </script>
+    <link rel="stylesheet" href="/src/live/app.css">
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+    <noscript>
+      <h1>VoltForge — Free Online AI Circuit Simulator</h1>
+      <p>VoltForge is a browser-based circuit simulator with Volt·AI, a built-in assistant that builds, explains and debugs circuits from plain English. Simulate voltage and current in real time across 2D, 3D, schematic and breadboard views. No download required. Please enable JavaScript to run the simulator.</p>
+    </noscript>
+
+    <div id="root"><nav id="seo-nav" aria-label="VoltForge demos" style="font-family:system-ui,sans-serif;padding:16px;color:#cbd5e1;background:#0d1520"><h1 style="font-size:18px;margin:0 0 8px">VoltForge &mdash; Free Online AI Circuit Simulator</h1><ul style="list-style:none;padding:0;margin:0;display:flex;gap:16px;flex-wrap:wrap"><li><a href="/simulate/led-circuit" style="color:#4fd1c5">LED circuit demo</a></li><li><a href="/simulate/rc-filter" style="color:#4fd1c5">RC filter demo</a></li><li><a href="/simulate/555-blinker" style="color:#4fd1c5">555 blinker demo</a></li><li><a href="/pricing" style="color:#4fd1c5">Pricing</a></li><li><a href="/manual.html" style="color:#4fd1c5">User Manual</a></li></ul></nav></div>
+    <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(console.error);
+      });
+    }
+  </script>
+    <script type="module" src="/src/live/app.js"></script>
+</body>
 </html>
