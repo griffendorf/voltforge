@@ -45539,6 +45539,9 @@ SENSING: shunt_resistor(t1,t2)
 AC: transformer(p1,p2,s1,s2) · triac(a1,a2,gate) · bridge_rect(ac1,ac2,pos=DC+,neg=DC-) · scr(an,ca,gate)
 MEASUREMENT: voltmeter(pos,neg — PARALLEL) · ammeter(pos,neg — SERIES)
 LOGIC: and_gate(a,b,out) · or_gate(a,b,out) · not_gate(in,out) · nand_gate(a,b,out) · nor_gate(a,b,out) · xor_gate(a,b,out)
+TIMER: timer555(vcc,gnd,dis,thr,out,trg,rst) — use these EXACT keys: trg = trigger, thr = threshold, dis = discharge, rst = reset. There is NO control-voltage (CV/ctrl) pin — leave it out.
+GROUND: ground(g) — its only terminal key is "g" (e.g. "gnd1:g").
+LOGIC GATES have NO vcc/gnd pins — they are powered internally. Never wire power or ground to a gate.
 
 ## HOW TO USE VOLTFORGE (current app guide — give these exact steps when users ask how to do something)
 
@@ -46028,7 +46031,8 @@ USER QUESTION: ${N}`;
               });
               const Ve = (ue) => {
                 let Ae = 0;
-                const He = [];
+                const He = [],
+                  __vfSame = [];
                 return (
                   (ue || []).forEach((ze) => {
                     const [ot, ee] = (ze.from || "").split(":"),
@@ -46039,15 +46043,33 @@ USER QUESTION: ${N}`;
                       He.push({ spec: ze, reason: "component not found" });
                       return;
                     }
-                    const st = Ie.termIds
-                        .map((Ht) => ve.terminals.get(Ht))
-                        .find((Ht) => (Ht == null ? void 0 : Ht.key) === ee),
-                      Ct = Ze.termIds
-                        .map((Ht) => ve.terminals.get(Ht))
-                        .find((Ht) => (Ht == null ? void 0 : Ht.key) === fe);
-                    st && Ct
-                      ? (ve.addWire(st.id, Ct.id, ze.color || C.blue), Ae++)
-                      : He.push({ spec: ze, reason: `terminal mismatch: "${ee}"/"${fe}"` });
+                    const st = __vfResolveTerm(ve, Ie, ee),
+                      Ct = __vfResolveTerm(ve, Ze, fe);
+                    st === "skip" || Ct === "skip"
+                      ? console.info("[vf] wire skipped (pin not modeled):", ze.from, "→", ze.to)
+                      : st && Ct
+                        ? st.compId === Ct.compId
+                          ? __vfSame.push([st, Ct, ze])
+                          : ve.addWire(st.id, Ct.id, ze.color || C.blue)
+                            ? Ae++
+                            : (ve.canConnect(st.id, Ct.id).reason || "") === "Already wired" ||
+                              He.push({ spec: ze, reason: `could not connect: ${ve.canConnect(st.id, Ct.id).reason || "rejected"}` })
+                        : He.push({
+                            spec: ze,
+                            reason: !st && !Ct
+                              ? `unknown terminals "${ee}" on ${ot} and "${fe}" on ${ke}`
+                              : !st
+                                ? `unknown terminal "${ee}" on ${ot} (${Ie.type})`
+                                : `unknown terminal "${fe}" on ${ke} (${Ze.type})`,
+                          });
+                  }),
+                  __vfSame.forEach(([sa, sb, sz]) => {
+                    __vfTieSamePart(ve, sa, sb, sz.color || C.blue)
+                      ? Ae++
+                      : He.push({
+                          spec: sz,
+                          reason: `two pins of the same part cannot be wired directly (${sz.from}→${sz.to}); wire each pin to the same component terminal instead`,
+                        });
                   }),
                   { valid: Ae, failed: He }
                 );
@@ -46055,7 +46077,8 @@ USER QUESTION: ${N}`;
               let { valid: at, failed: Oe } = Ve(Je.wires);
               for (let ue = 0; ue < 2 && Oe.length > 0; ue++) {
                 const He = `These wires failed to connect: ${Oe.map((ze) => `${ze.spec.from}→${ze.spec.to}: ${ze.reason}`).join(", ")}.
-Terminal keys — battery(pos,neg) resistor(t1,t2) led(an,ca) diode(an,ca) switch_(in,out) pushbtn(in,out) fuse(in,out) breaker(in,out) bulb(t1,t2) motor(pos,neg) relay(coil1,coil2,sw) npn(base,coll,emit) mosfet(gate,drain,src) capacitor(t1,t2) inductor(t1,t2) buzzer(pos,neg) dc_source(pos,neg) solar(pos,neg) acsource(pos,neg) voltmeter(pos,neg) ammeter(pos,neg) spdt(com,no,nc) dpdt(c1,c2,f1,f2,r1,r2) bridge_rect(ac1,ac2,pos,neg) transformer(p1,p2,s1,s2) opamp(inp,inn,vcc,vee,out) voltage_reg(in,gnd,out) potmeter(t1,wiper,t2) scr(an,ca,gate) triac(a1,a2,gate) and_gate(a,b,out) or_gate(a,b,out) not_gate(in,out) nand_gate(a,b,out) nor_gate(a,b,out) xor_gate(a,b,out) timer555(vcc,gnd,dis,thr,out,trg,rst).
+Terminal keys — battery(pos,neg) resistor(t1,t2) led(an,ca) diode(an,ca) switch_(in,out) pushbtn(in,out) fuse(in,out) breaker(in,out) bulb(t1,t2) motor(pos,neg) relay(coil1,coil2,sw) npn(base,coll,emit) mosfet(gate,drain,src) capacitor(t1,t2) inductor(t1,t2) buzzer(pos,neg) dc_source(pos,neg) solar(pos,neg) acsource(pos,neg) voltmeter(pos,neg) ammeter(pos,neg) spdt(com,no,nc) dpdt(c1,c2,f1,f2,r1,r2) bridge_rect(ac1,ac2,pos,neg) transformer(p1,p2,s1,s2) opamp(inp,inn,vcc,vee,out) voltage_reg(in,gnd,out) potmeter(t1,wiper,t2) scr(an,ca,gate) triac(a1,a2,gate) and_gate(a,b,out) or_gate(a,b,out) not_gate(in,out) nand_gate(a,b,out) nor_gate(a,b,out) xor_gate(a,b,out) timer555(vcc,gnd,dis,thr,out,trg,rst) ground(g) thermistor(t1,t2) ldr(t1,t2) zener(an,ca) pnp(base,emit,coll) speaker(pos,neg) heater(t1,t2) varistor(t1,t2) solenoid(pos,neg) contactor(coil1,coil2,sw) anl_fuse(in,out) ptc_fuse(in,out) tvs_diode(t1,t2) shunt_resistor(t1,t2) current_src(pos,neg).
+Logic gates have NO vcc/gnd pins and the 555 has NO ctrl/CV pin — drop those wires instead of retrying them.
 Re-emit ONLY corrected wires using exact terminal keys. Empty components array.
 <build>{"action":"build","components":[],"wires":[...]}</build>`;
                 try {
@@ -54160,3 +54183,80 @@ class V4 extends Gs.Component {
   }
 }
 dM.createRoot(document.getElementById("root")).render(f.jsx(V4, { children: f.jsx(j4, {}) }));
+
+// Resolves AI-emitted terminal names (trig, disch, pin3, 1/2, ...) to real terminal keys.
+// Returns a terminal, "skip" for pins the simulator does not model, or null.
+function __vfResolveTerm(G, comp, rawKey) {
+  const terms = (comp.termIds || []).map((id) => G.terminals.get(id)).filter(Boolean);
+  if (!terms.length) return null;
+  const key = String(rawKey == null ? "" : rawKey).trim();
+  const byKey = (k) => terms.find((t) => t.key === k) || null;
+  let hit = byKey(key);
+  if (hit) return hit;
+  const k = key.toLowerCase().replace(/[\s_]+/g, "");
+  hit = byKey(k);
+  if (hit) return hit;
+  const type = comp.type || "";
+  if (/_gate$/.test(type) && ["vcc", "vdd", "v+", "vplus", "gnd", "ground", "vss", "v-", "0v", "power"].includes(k)) return "skip";
+  if (type === "timer555") {
+    if (["ctrl", "cv", "control", "controlvoltage", "con", "pin5", "5"].includes(k)) return "skip";
+    const PIN = { 1: "gnd", 2: "trg", 3: "out", 4: "rst", 6: "thr", 7: "dis", 8: "vcc" };
+    const m = /^(?:pin|p)?(\d)$/.exec(k);
+    if (m && PIN[m[1]]) return byKey(PIN[m[1]]);
+  }
+  if (type === "ground") return terms[0];
+  const ALIAS = {
+    trig: ["trg"], trigger: ["trg"], tr: ["trg"],
+    thres: ["thr"], thresh: ["thr"], threshold: ["thr"], th: ["thr"],
+    disch: ["dis"], discharge: ["dis"],
+    reset: ["rst"], res: ["rst"],
+    output: ["out"], q: ["out"], o: ["out"], y: ["out"],
+    vdd: ["vcc"], "v+": ["vcc", "pos"], vplus: ["vcc"], supply: ["vcc"],
+    ground: ["gnd", "neg"], vss: ["gnd", "vee"], "0v": ["gnd", "neg"],
+    input: ["in"], vin: ["in"],
+    anode: ["an"], a: ["an"], cathode: ["ca"], k: ["ca"],
+    c: ["coll", "ca", "com"], e: ["emit"], b: ["base"], g: ["gate"],
+    collector: ["coll"], col: ["coll"], emitter: ["emit"], bas: ["base"],
+    d: ["drain"], s: ["src"], source: ["src"], gt: ["gate"],
+    positive: ["pos"], plus: ["pos"], "+": ["pos"], p: ["pos"],
+    negative: ["neg"], minus: ["neg"], "-": ["neg"], n: ["neg"],
+    "in+": ["inp"], noninverting: ["inp"], "in-": ["inn"], inverting: ["inn"], "v-": ["vee", "neg"],
+    wipe: ["wiper"], w: ["wiper"], common: ["com"],
+    in1: ["a"], in2: ["b"], a1: ["a"], b1: ["b"],
+  };
+  for (const cand of ALIAS[k] || []) {
+    hit = byKey(cand);
+    if (hit) return hit;
+  }
+  if (terms.length === 2) {
+    if (["t1", "1", "pos", "+", "p", "in", "an", "a", "anode", "positive", "l", "line", "pin1"].includes(k)) return terms[0];
+    if (["t2", "2", "neg", "-", "n", "out", "ca", "k", "b", "cathode", "negative", "pin2"].includes(k)) return terms[1];
+  }
+  const num = /^(?:pin|p|t)?(\d+)$/.exec(k);
+  if (num) {
+    const idx = parseInt(num[1], 10) - 1;
+    if (idx >= 0 && idx < terms.length) return terms[idx];
+  }
+  return null;
+}
+
+// Ties two pins of the same part (e.g. 555 TRG + THR) by wiring the second pin to a terminal
+// on another part that the first pin already connects to. Returns true if they share a node.
+function __vfTieSamePart(G, a, b, color) {
+  const neighbor = (t, other) => {
+    for (const wid of t.wireIds) {
+      const w = G.wires.get(wid);
+      if (!w) continue;
+      const o = G.terminals.get(w.from === t.id ? w.to : w.from);
+      if (o && o.compId !== other.compId) return o;
+    }
+    return null;
+  };
+  for (const [x, y] of [[a, b], [b, a]]) {
+    const n = neighbor(x, y);
+    if (!n) continue;
+    if (G.addWire(n.id, y.id, color)) return true;
+    if ((G.canConnect(n.id, y.id).reason || "") === "Already wired") return true;
+  }
+  return false;
+}
