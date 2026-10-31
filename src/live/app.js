@@ -48714,7 +48714,7 @@ function d4({
   setZoom: l,
   setPan: u,
 }) {
-  window.__vf = { G: ve, sim: Vn, place: vg, wire: _g, scripts: c_, bump: n, setView: e, setSimOn: a, setZoom: l, setPan: u };
+  window.__vf = { G: ve, sim: Vn, place: vg, wire: _g, scripts: c_, bump: n, setView: e, setSimOn: a, setZoom: l, setPan: u, me: () => KE.me() };
   const [d, h] = F.useState(""),
     g = u4,
     m = F.useRef(!1),

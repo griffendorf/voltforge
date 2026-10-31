@@ -1,7 +1,62 @@
 /* VoltForge Tutor Mode (Stage A). Open with ?learn=<script> or ?learn= for the picker. */
 (function () {
   var qs = new URLSearchParams(location.search);
-  if (!qs.has("learn")) return;
+  if (!qs.has("learn")) { if (!qs.has("demo")) learnButton(); return; }
+  function proOk(u) {
+    return !!u && (u.tier === "pro" || u.tier === "premium" || u.paidTier === "pro" || u.paidTier === "premium" || !!u.inTrial);
+  }
+  function gate(v, cb) {
+    if (!v || !v.me) return cb(false);
+    v.me().then(function (u) { cb(proOk(u)); }, function () { cb(false); });
+  }
+  function locked() {
+    var r = document.createElement("div");
+    r.id = "vf-tutor";
+    r.style.cssText = "position:fixed;right:8px;top:90px;width:min(230px,60vw);z-index:9997;padding:12px;border-radius:14px;" +
+      "background:rgba(8,12,20,.94);border:1px solid #00d4ff55;box-shadow:0 4px 24px rgba(0,0,0,.5);color:#e8f2ff;font-family:system-ui,sans-serif";
+    r.innerHTML = '<div style="font-size:11px;color:#00d4ff;font-weight:700;margin-bottom:6px">LEARN</div>' +
+      '<div style="font-size:15px;font-weight:700;margin-bottom:6px">🔒 Lessons are a Pro feature</div>' +
+      '<div style="font-size:12px;color:#9ab8c8;line-height:1.5;margin-bottom:10px">Step-by-step interactive lessons that check your work as you build. Included with Pro and Premium.</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button data-a="up" style="' + B(1) + '">Upgrade</button><button data-a="x" style="' + B(0) + '">Not now</button></div>';
+    r.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-a]"); if (!b) return;
+      location.href = b.getAttribute("data-a") === "up" ? "/pricing" : location.origin + "/";
+    });
+    document.body.appendChild(r);
+  }
+  function learnButton() {
+    var b = document.createElement("button"), st = null, moved = false;
+    b.id = "vf-learn-btn"; b.textContent = "🎓 Learn";
+    b.style.cssText = "position:fixed;right:10px;top:140px;z-index:9996;padding:8px 14px;border-radius:999px;border:1px solid #00d4ff66;" +
+      "background:rgba(8,12,20,.9);color:#00d4ff;font:700 12px system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.4);touch-action:none;cursor:pointer;display:none";
+    function put(x, y) {
+      x = Math.max(4, Math.min(innerWidth - b.offsetWidth - 4, x)); y = Math.max(4, Math.min(innerHeight - b.offsetHeight - 4, y));
+      b.style.left = x + "px"; b.style.top = y + "px"; b.style.right = "auto";
+    }
+    b.addEventListener("pointerdown", function (e) {
+      var r = b.getBoundingClientRect(); st = { x: e.clientX, y: e.clientY, dx: e.clientX - r.left, dy: e.clientY - r.top }; moved = false;
+      try { b.setPointerCapture(e.pointerId); } catch (x) {}
+    });
+    b.addEventListener("pointermove", function (e) {
+      if (!st) return;
+      if (!moved && Math.hypot(e.clientX - st.x, e.clientY - st.y) > 8) moved = true;
+      if (moved) put(e.clientX - st.dx, e.clientY - st.dy);
+    });
+    b.addEventListener("pointerup", function () {
+      if (!st) return; st = null;
+      if (moved) { var r = b.getBoundingClientRect(); try { localStorage.setItem("vf_learn_btn_pos", JSON.stringify({ x: r.left, y: r.top })); } catch (e) {} }
+      else location.search = "?learn=";
+    });
+    b.addEventListener("pointercancel", function () { st = null; });
+    document.body.appendChild(b);
+    var placed = false;
+    setInterval(function () {
+      var show = !!window.__vf && location.pathname === "/" && !new URLSearchParams(location.search).has("learn");
+      b.style.display = show ? "block" : "none";
+      if (show && !b._gated && window.__vf.me) { b._gated = true; gate(window.__vf, function (ok) { b.textContent = ok ? "🎓 Learn" : "🔒 Learn"; }); }
+      if (show && !placed) { placed = true; try { var sp = JSON.parse(localStorage.getItem("vf_learn_btn_pos") || "null"); if (sp) put(sp.x, sp.y); } catch (e) {} }
+    }, 1000);
+  }
   var NAME = qs.get("learn") || "";
   var TITLES = { "led-circuit": "💡 LED circuit", "rc-filter": "🔋 RC charging", "555-blinker": "⏱ 555 blinker", "555-oneshot": "⏱ 555 one-shot" };
   var ORDER = ["led-circuit", "rc-filter", "555-blinker", "555-oneshot"];
@@ -233,5 +288,5 @@
     } else render();
     setInterval(tick, 250);
   }
-  waitVf(start);
+  waitVf(function (v) { gate(v, function (ok) { if (ok) start(v); else locked(); }); });
 })();
