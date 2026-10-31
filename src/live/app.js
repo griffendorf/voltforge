@@ -13266,7 +13266,7 @@ const KE = {
         throw ((e.status = 401), e);
       }
       const n = await Rr("/api/auth/me", { method: "GET" });
-      return { email: n.email, full_name: n.email, tier: n.tier, paidTier: n.paidTier };
+      return { email: n.email, full_name: n.email, tier: n.tier, paidTier: n.paidTier, inTrial: n.inTrial, trialDaysLeft: n.trialDaysLeft, trialUsed: n.trialUsed };
     },
     redirectToLogin() {
       window.location.pathname !== "/login" && (window.location.href = "/login");
@@ -13989,7 +13989,7 @@ function oT() {
                       color: Rn.dim,
                       lineHeight: 1.9,
                     },
-                    children: "Free plan available · No card required",
+                    children: "Free plan available · Try all Premium features 7 days for $0.99",
                   }),
                 ],
               }),
@@ -50870,6 +50870,68 @@ function k4() {
             }),
         ],
       }),
+      !e &&
+        n === "free" &&
+        !(t && t.trialUsed) &&
+        f.jsxs("div", {
+          style: {
+            width: "100%",
+            maxWidth: 900,
+            marginBottom: 16,
+            padding: "16px",
+            borderRadius: 14,
+            background: "linear-gradient(135deg,#0b1f14,#091e2e)",
+            border: "1.5px solid #39ff7a66",
+            boxShadow: "0 0 16px #39ff7a22",
+            textAlign: "center",
+            boxSizing: "border-box",
+          },
+          children: [
+            f.jsx("div", { style: { fontSize: 9, fontWeight: 700, color: "#39ff7a", letterSpacing: 1, marginBottom: 6 }, children: "NEW MEMBER OFFER" }),
+            f.jsx("div", { style: { fontSize: 15, fontWeight: 700, color: "#e8f4f8", marginBottom: 6 }, children: "Try everything \u2014 7 days for $0.99" }),
+            f.jsx("div", { style: { fontSize: 9, color: "#9ab8c8", lineHeight: 1.7, marginBottom: 12 }, children: "Full Premium access for 7 days, including 50 Volt\u00b7AI builds. Then Pro at $4.99/month. Cancel before day 7 and you won't be charged again." }),
+            f.jsx("button", {
+              onClick: () => y("trial"),
+              disabled: i === "trial",
+              style: {
+                width: "100%",
+                maxWidth: 320,
+                padding: "12px",
+                borderRadius: 10,
+                border: "none",
+                background: "linear-gradient(135deg,#39ff7a,#00d4ff)",
+                color: "#000",
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+                opacity: i === "trial" ? 0.7 : 1,
+                touchAction: "manipulation",
+                WebkitTapHighlightColor: "transparent",
+              },
+              children: i === "trial" ? "..." : "Start 7-day trial \u00b7 $0.99",
+            }),
+          ],
+        }),
+      !e &&
+        t &&
+        t.inTrial &&
+        f.jsx("div", {
+          style: {
+            width: "100%",
+            maxWidth: 900,
+            marginBottom: 16,
+            padding: "10px 16px",
+            borderRadius: 10,
+            background: "#39ff7a14",
+            border: "1px solid #39ff7a44",
+            color: "#39ff7a",
+            fontSize: 10,
+            textAlign: "center",
+            boxSizing: "border-box",
+          },
+          children: "Trial active \u00b7 " + (t.trialDaysLeft || 0) + " day" + (t.trialDaysLeft === 1 ? "" : "s") + " left \u00b7 All Premium features unlocked",
+        }),
       f.jsx("div", {
         style: {
           display: "flex",
