@@ -15834,6 +15834,25 @@ class wT {
       this._g.version !== this._gv && ((this._gv = this._g.version), (this._cached = null)));
     const a = e || t ? Tv(i, e ? this.simTime : null) : (this._cached ?? (this._cached = Tv(i)));
     bT(i, a);
+    if (!t) {
+      /*vfcap*/ const now = (typeof performance < "u" ? performance.now() : Date.now()) / 1e3,
+        dtw = this._capT ? Math.min(now - this._capT, 0.5) : 0;
+      ((this._capT = now), a.__capBase || (a.__capBase = new Map()));
+      this._g.components.forEach((c) => {
+        if (c.type !== "capacitor") return;
+        const o = a.compOut && a.compOut.get(c.id);
+        if (!o) return;
+        let b = a.__capBase.get(c.id);
+        b || ((b = { V: o.V || 0, I: o.I || 0 }), a.__capBase.set(c.id, b));
+        const C = c._farads ?? 1e-4,
+          Rs = b.I > 1e-12 ? Math.max(((a.Vs || 0) - b.V) / b.I, 0.5) : 0;
+        let vc = c._Vc ?? 0;
+        b.V > 1e-6 && Rs > 0 && (vc += (b.V - vc) * (1 - Math.exp(-dtw / Math.max(Rs * C, 1e-6))));
+        ((c._Vc = vc), (c._Vt = b.V), (c._tau = Rs * C));
+        const ic = Rs > 0 && b.V > 1e-6 ? Math.max((b.V - vc) / Rs, 0) : 0;
+        ((o.V = vc), (o.I = ic), (o.P = vc * ic));
+      });
+    }
     const l = new Map();
     (this._g.components.forEach((d) => l.set(d.id, pT(d, a))),
       (this.snap = {
@@ -15864,6 +15883,10 @@ class wT {
       (this.simTime = 0),
       (this._cached = null),
       (this._hash = ""),
+      (this._capT = 0),
+      this._g.components.forEach((c) => {
+        c.type === "capacitor" && ((c._Vc = 0), (c._Vt = 0));
+      }),
       this._schedule());
   }
   stop() {
@@ -48660,12 +48683,12 @@ const c_ = {
       {
         caption: "Add a resistor",
         delay: 1400,
-        components: [{ label: "R1", type: "resistor", x: 360, y: 288, props: { _ohms: 1e3 } }],
+        components: [{ label: "R1", type: "resistor", x: 360, y: 288, props: { _ohms: 1e4 } }],
       },
       {
         caption: "Add a capacitor",
         delay: 1400,
-        components: [{ label: "C1", type: "capacitor", x: 576, y: 288, props: { _farads: 1e-4 } }],
+        components: [{ label: "C1", type: "capacitor", x: 576, y: 288, props: { _farads: 4.7e-4 } }],
       },
       {
         caption: "Wire the circuit",
@@ -48691,6 +48714,7 @@ function d4({
   setZoom: l,
   setPan: u,
 }) {
+  window.__vf = { G: ve, sim: Vn, place: vg, wire: _g, scripts: c_, bump: n, setView: e, setSimOn: a, setZoom: l, setPan: u };
   const [d, h] = F.useState(""),
     g = u4,
     m = F.useRef(!1),

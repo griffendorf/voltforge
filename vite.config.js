@@ -7,6 +7,7 @@ export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
   // src/live/app.js already contains Vite's modulepreload polyfill (it is the recovered Oct 10 bundle)
   build: { modulePreload: { polyfill: false } },
+  server: { proxy: { '/api': { target: 'https://www.voltforgeai.com', changeOrigin: true, secure: true, cookieDomainRewrite: '' } } },
   plugins: [
     base44({
       // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.
